@@ -1,4 +1,4 @@
-import { Notice, Setting } from 'obsidian';
+import { Notice, requestUrl, Setting } from 'obsidian';
 
 import type { ProviderSettingsTabRenderer } from '../../../core/providers/types';
 import { getLocale } from '../../../i18n/i18n';
@@ -233,7 +233,8 @@ export const mimoSettingsTabRenderer: ProviderSettingsTabRenderer = {
             button.setButtonText(s.testingButton).setDisabled(true);
             try {
               const baseUrl = getMimoBaseUrl(mimoSettings);
-              const response = await fetch(`${baseUrl}/chat/completions`, {
+              const response = await requestUrl({
+                url: `${baseUrl}/chat/completions`,
                 method: 'POST',
                 headers: {
                   'api-key': mimoSettings.apiKey,
@@ -244,13 +245,13 @@ export const mimoSettingsTabRenderer: ProviderSettingsTabRenderer = {
                   messages: [{ role: 'user', content: 'Hi' }],
                   max_completion_tokens: 5,
                 }),
+                throw: false,
               });
 
-              if (response.ok) {
+              if (response.status >= 200 && response.status < 300) {
                 new Notice(s.testSuccess);
               } else {
-                const text = await response.text().catch(() => '');
-                new Notice(`MiMo error ${response.status}: ${text.slice(0, 120) || response.statusText}`);
+                new Notice(`MiMo error ${response.status}: ${response.text.slice(0, 120)}`);
               }
             } catch (err) {
               const message = err instanceof Error ? err.message : 'Unknown error';

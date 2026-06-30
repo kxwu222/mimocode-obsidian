@@ -196,6 +196,7 @@ export class MimoChatRuntime implements ChatRuntime {
 
       let response: Response;
       try {
+        // requestUrl does not support streaming responses; fetch is required for SSE
         response = await fetch(`${baseUrl}/chat/completions`, {
           method: 'POST',
           headers: {

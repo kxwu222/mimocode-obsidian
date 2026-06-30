@@ -108,7 +108,7 @@ export class McpToolRunner {
             function: {
               name: `mcp__${serverName}__${tool.name}`,
               description: tool.description,
-              parameters: tool.inputSchema as Record<string, unknown> | undefined,
+              parameters: tool.inputSchema,
             },
           });
         }

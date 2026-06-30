@@ -1,3 +1,5 @@
+import { requestUrl } from 'obsidian';
+
 import type { AuxQueryConfig, AuxQueryRunner } from '../../../core/auxiliary/AuxQueryRunner';
 import type ClaudianPlugin from '../../../main';
 import { getMimoBaseUrl, getMimoProviderSettings } from '../settings';
@@ -22,12 +24,12 @@ export class MimoAuxQueryRunner implements AuxQueryRunner {
     }
 
     this.abortController = config.abortController ?? new AbortController();
-    const { signal } = this.abortController;
 
     const model = config.model ?? mimoSettings.model;
     const baseUrl = getMimoBaseUrl(mimoSettings);
 
-    const response = await fetch(`${baseUrl}/chat/completions`, {
+    const response = await requestUrl({
+      url: `${baseUrl}/chat/completions`,
       method: 'POST',
       headers: {
         'api-key': mimoSettings.apiKey,
@@ -42,15 +44,14 @@ export class MimoAuxQueryRunner implements AuxQueryRunner {
         stream: false,
         max_completion_tokens: 4096,
       }),
-      signal,
+      throw: false,
     });
 
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      throw new Error(`MiMo API error ${response.status}: ${text || response.statusText}`);
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(`MiMo API error ${response.status}: ${response.text}`);
     }
 
-    const data = await response.json() as {
+    const data = response.json as {
       choices?: Array<{ message?: { content?: string } }>;
     };
 
