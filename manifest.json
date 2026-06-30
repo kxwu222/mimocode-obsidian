@@ -1,10 +1,10 @@
 {
-  "id": "realclaudian",
-  "name": "Claudian",
-  "version": "2.0.27",
+  "id": "mimocode",
+  "name": "MiMo Code",
+  "version": "1.0.0",
   "minAppVersion": "1.7.2",
-  "description": "Embeds Claude Code, Codex, and other coding agents as AI collaborators in your vault. Your vault becomes their working directory, giving them capabilities for file reads and writes, search, bash commands, and multi-step workflows.",
-  "author": "Yishen Tu",
-  "authorUrl": "https://github.com/YishenTu",
+  "description": "Embeds Xiaomi MiMo as an AI coding assistant in your vault sidebar. Powered by the MiMo Token Plan API.",
+  "author": "kxwu222",
+  "authorUrl": "https://github.com/kxwu222/mimocode-obsidian",
   "isDesktopOnly": true
 }

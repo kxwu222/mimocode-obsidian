@@ -1,7 +1,7 @@
 {
-  "name": "claudian",
-  "version": "2.0.27",
-  "description": "Claudian - Claude Code embedded in Obsidian sidebar",
+  "name": "mimocode",
+  "version": "1.0.0",
+  "description": "MiMo Code - Xiaomi MiMo AI coding assistant embedded in Obsidian",
   "main": "main.js",
   "engines": {
     "node": ">=24 <25"

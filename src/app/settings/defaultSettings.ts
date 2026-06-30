@@ -7,9 +7,9 @@ export const DEFAULT_CLAUDIAN_SETTINGS: ClaudianSettings = {
 
   permissionMode: 'yolo',
 
-  model: 'haiku',
+  model: 'mimo-v2.5-pro',
   thinkingBudget: 'off',
-  effortLevel: 'high',
+  effortLevel: 'none',
   serviceTier: 'default',
   enableAutoTitleGeneration: true,
   titleGenerationModel: '',
@@ -35,7 +35,7 @@ export const DEFAULT_CLAUDIAN_SETTINGS: ClaudianSettings = {
 
   providerConfigs: getBuiltInProviderDefaultConfigs(),
 
-  settingsProvider: 'claude',
+  settingsProvider: 'mimo',
   savedProviderModel: {},
   savedProviderEffort: {},
   savedProviderServiceTier: {},
