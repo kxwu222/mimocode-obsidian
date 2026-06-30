@@ -9,11 +9,11 @@ An Obsidian plugin that brings [Xiaomi MiMo](https://mimo.mi.com) into your vaul
 
 **Chat sidebar** — Open a persistent chat panel from the ribbon or command palette. MiMo can answer questions, help you think through problems, and work with your vault content step by step.
 
-**MCP tool use** — Connect MCP servers to let MiMo read and write vault files, search the web, and run multi-step agentic tasks autonomously.
+**MCP tool use** — MCP servers connected to let MiMo read and write vault files, search the web, and run multi-step agentic tasks autonomously.
 
-**Inline Edit** — Select any text in a note and invoke the inline-edit hotkey. MiMo rewrites it in place, with a word-level diff preview before you commit.
+**Inline-Edit** — Select any text in a note and invoke the inline-edit hotkey. MiMo rewrites it in place, with a word-level diff preview before you commit.
 
-**Instruction Refinement** — Type `#` in the chat input to interactively refine a custom system instruction.
+**Prompt Tuning** — Type `#` in an empty chat input to describe a behavior in plain language. MiMo rewrites it into a clean system instruction and saves it to your settings after confirmation.
 
 **Conversation History** — Sessions are saved locally in your vault. Resume, browse, or delete past conversations at any time.
 
