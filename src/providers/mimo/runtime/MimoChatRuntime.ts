@@ -1,3 +1,4 @@
+import { ProviderWorkspaceRegistry } from '../../../core/providers/ProviderWorkspaceRegistry';
 import type { ProviderCapabilities } from '../../../core/providers/types';
 import type { ChatRuntime } from '../../../core/runtime/ChatRuntime';
 import type {
@@ -22,6 +23,7 @@ import type {
   SlashCommand,
   StreamChunk,
 } from '../../../core/types';
+import type { McpServerConfig } from '../../../core/types';
 import type ClaudianPlugin from '../../../main';
 import { appendBrowserContext } from '../../../utils/browser';
 import { appendCanvasContext } from '../../../utils/canvas';
@@ -29,11 +31,27 @@ import { appendCurrentNote } from '../../../utils/context';
 import { appendEditorContext } from '../../../utils/editor';
 import { MIMO_PROVIDER_CAPABILITIES } from '../capabilities';
 import { getMimoBaseUrl, getMimoProviderSettings, isMimoModel } from '../settings';
-import { buildMimoMessages } from './buildMimoMessages';
+import {
+  buildMimoMessages,
+  type MimoAssistantMessage,
+  type MimoMessage,
+  type MimoToolCall,
+  type MimoToolResultMessage,
+} from './buildMimoMessages';
+import type { OpenAIToolDef } from './McpToolRunner';
+import { McpToolRunner } from './McpToolRunner';
 
 const MIMO_SYSTEM_PROMPT =
   'You are MiMo, an advanced AI coding assistant developed by Xiaomi. '
   + 'Help the user with their coding tasks, answer questions, and assist with their vault.';
+
+/** Accumulated tool call data from an OpenAI streaming response. */
+interface AccumulatedToolCall {
+  index: number;
+  id: string;
+  name: string;
+  arguments: string;
+}
 
 export class MimoChatRuntime implements ChatRuntime {
   readonly providerId = 'mimo' as const;
@@ -110,123 +128,261 @@ export class MimoChatRuntime implements ChatRuntime {
 
     const messages = buildMimoMessages(turn, conversationHistory, MIMO_SYSTEM_PROMPT);
 
-    // Resolve the model: use tab-level selection only when it is a valid MiMo model,
-    // so stale Claude model names stored in settings never reach the MiMo API.
     const rawModel = typeof settings.model === 'string' ? settings.model.trim() : '';
     const selectedModel = rawModel && isMimoModel(rawModel) ? rawModel : mimoSettings.model;
-
     const baseUrl = getMimoBaseUrl(mimoSettings);
 
-    let response: Response;
+    // Resolve MCP tools if any servers are mentioned.
+    let toolDefs: OpenAIToolDef[] = [];
+    let serverConfigs: Record<string, McpServerConfig> = {};
+    const runner = new McpToolRunner();
+
     try {
-      response = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'api-key': mimoSettings.apiKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: selectedModel,
-          messages,
-          stream: true,
-          max_completion_tokens: 32768,
-        }),
+      if (turn.mcpMentions.size > 0) {
+        const mcpManager = ProviderWorkspaceRegistry.getMcpServerManager('mimo');
+        if (mcpManager) {
+          serverConfigs = mcpManager.getActiveServers(turn.mcpMentions);
+          if (Object.keys(serverConfigs).length > 0) {
+            toolDefs = await runner.listTools(serverConfigs);
+          }
+        }
+      }
+
+      yield* this._runAgentLoop(
+        baseUrl,
+        mimoSettings.apiKey,
+        selectedModel,
+        messages,
+        toolDefs,
+        serverConfigs,
+        runner,
         signal,
-      });
-    } catch (error) {
+      );
+    } finally {
+      await runner.close();
+      this.abortController = null;
+    }
+  }
+
+  /** The core agent loop: stream → accumulate tool calls → execute → repeat. */
+  private async *_runAgentLoop(
+    baseUrl: string,
+    apiKey: string,
+    model: string,
+    messages: MimoMessage[],
+    toolDefs: OpenAIToolDef[],
+    serverConfigs: Record<string, McpServerConfig>,
+    runner: McpToolRunner,
+    signal: AbortSignal,
+  ): AsyncGenerator<StreamChunk> {
+    let inputTokens = 0;
+    let outputTokens = 0;
+    const MAX_TOOL_LOOPS = 20;
+    let loopCount = 0;
+
+    while (loopCount < MAX_TOOL_LOOPS) {
+      loopCount++;
+
+      const body: Record<string, unknown> = {
+        model,
+        messages,
+        stream: true,
+        max_completion_tokens: 32768,
+      };
+      if (toolDefs.length > 0) {
+        body.tools = toolDefs;
+        body.tool_choice = 'auto';
+      }
+
+      let response: Response;
+      try {
+        response = await fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'api-key': apiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+          signal,
+        });
+      } catch (error) {
+        if (signal.aborted) {
+          yield { type: 'done' };
+          return;
+        }
+        const message = error instanceof Error ? error.message : 'Network error';
+        yield { type: 'error', content: `MiMo request failed: ${message}` };
+        yield { type: 'done' };
+        return;
+      }
+
+      if (!response.ok) {
+        let errBody = '';
+        try {
+          errBody = await response.text();
+        } catch {
+          // ignore
+        }
+        yield {
+          type: 'error',
+          content: `MiMo API error ${response.status}: ${errBody || response.statusText}`,
+        };
+        yield { type: 'done' };
+        return;
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        yield { type: 'error', content: 'MiMo response body is empty.' };
+        yield { type: 'done' };
+        return;
+      }
+
+      // Accumulated tool calls for this response turn.
+      const pendingToolCalls = new Map<number, AccumulatedToolCall>();
+      let finishReason: string | null = null;
+      // assistant text content accumulated for the history entry
+      let assistantText = '';
+
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      try {
+        let finished = false;
+        while (!finished) {
+          const { done, value } = await reader.read();
+          if (done || signal.aborted) {
+            break;
+          }
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data:')) {
+              continue;
+            }
+
+            const data = trimmed.slice(5).trim();
+            if (data === '[DONE]') {
+              finished = true;
+              break;
+            }
+
+            try {
+              const parsed = JSON.parse(data) as {
+                choices?: Array<{
+                  delta?: {
+                    content?: string;
+                    tool_calls?: Array<{
+                      index: number;
+                      id?: string;
+                      type?: string;
+                      function?: { name?: string; arguments?: string };
+                    }>;
+                  };
+                  finish_reason?: string | null;
+                }>;
+                usage?: {
+                  prompt_tokens?: number;
+                  completion_tokens?: number;
+                };
+              };
+
+              const choice = parsed.choices?.[0];
+              if (choice?.delta?.content) {
+                assistantText += choice.delta.content;
+                yield { type: 'text', content: choice.delta.content };
+              }
+
+              // Accumulate streaming tool call chunks (OpenAI sends them in pieces).
+              for (const tc of choice?.delta?.tool_calls ?? []) {
+                let entry = pendingToolCalls.get(tc.index);
+                if (!entry) {
+                  entry = { index: tc.index, id: '', name: '', arguments: '' };
+                  pendingToolCalls.set(tc.index, entry);
+                }
+                if (tc.id) entry.id = tc.id;
+                if (tc.function?.name) entry.name += tc.function.name;
+                if (tc.function?.arguments) entry.arguments += tc.function.arguments;
+              }
+
+              if (choice?.finish_reason) {
+                finishReason = choice.finish_reason;
+                finished = true;
+                break;
+              }
+              if (parsed.usage) {
+                inputTokens = parsed.usage.prompt_tokens ?? 0;
+                outputTokens = parsed.usage.completion_tokens ?? 0;
+              }
+            } catch {
+              // Skip malformed SSE frames.
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+
       if (signal.aborted) {
         yield { type: 'done' };
         return;
       }
-      const message = error instanceof Error ? error.message : 'Network error';
-      yield { type: 'error', content: `MiMo request failed: ${message}` };
-      yield { type: 'done' };
-      return;
-    }
 
-    if (!response.ok) {
-      let errBody = '';
-      try {
-        errBody = await response.text();
-      } catch {
-        // ignore
+      // If there are no tool calls or we're done, exit the loop.
+      if (finishReason !== 'tool_calls' || pendingToolCalls.size === 0) {
+        break;
       }
-      yield {
-        type: 'error',
-        content: `MiMo API error ${response.status}: ${errBody || response.statusText}`,
+
+      // Build the sorted list of completed tool calls.
+      const toolCallList = Array.from(pendingToolCalls.values()).sort(
+        (a, b) => a.index - b.index,
+      );
+
+      // Append the assistant message with tool_calls to message history.
+      const assistantMsg: MimoAssistantMessage = {
+        role: 'assistant',
+        content: assistantText || null,
+        tool_calls: toolCallList.map((tc): MimoToolCall => ({
+          id: tc.id,
+          type: 'function',
+          function: { name: tc.name, arguments: tc.arguments },
+        })),
       };
-      yield { type: 'done' };
-      return;
-    }
+      messages.push(assistantMsg);
 
-    const reader = response.body?.getReader();
-    if (!reader) {
-      yield { type: 'error', content: 'MiMo response body is empty.' };
-      yield { type: 'done' };
-      return;
-    }
-
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let inputTokens = 0;
-    let outputTokens = 0;
-
-    try {
-      let finished = false;
-      while (!finished) {
-        const { done, value } = await reader.read();
-        if (done || signal.aborted) {
-          break;
+      // Execute each tool call and append tool result messages.
+      for (const tc of toolCallList) {
+        let input: Record<string, unknown> = {};
+        try {
+          const parsed: unknown = JSON.parse(tc.arguments || '{}');
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            input = parsed as Record<string, unknown>;
+          }
+        } catch {
+          // Use empty input if arguments are not valid JSON.
         }
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
+        // Yield tool_use chunk so the UI can show the tool being called.
+        yield { type: 'tool_use', id: tc.id, name: tc.name, input };
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data:')) {
-            continue;
-          }
+        const { content, isError } = await runner.callTool(tc.name, serverConfigs, input);
 
-          const data = trimmed.slice(5).trim();
-          if (data === '[DONE]') {
-            finished = true;
-            break;
-          }
+        // Yield tool_result chunk so the UI can show the result.
+        yield { type: 'tool_result', id: tc.id, content, isError };
 
-          try {
-            const parsed = JSON.parse(data) as {
-              choices?: Array<{
-                delta?: { content?: string };
-                finish_reason?: string | null;
-              }>;
-              usage?: {
-                prompt_tokens?: number;
-                completion_tokens?: number;
-              };
-            };
-
-            const choice = parsed.choices?.[0];
-            if (choice?.delta?.content) {
-              yield { type: 'text', content: choice.delta.content };
-            }
-            if (choice?.finish_reason) {
-              finished = true;
-              break;
-            }
-            if (parsed.usage) {
-              inputTokens = parsed.usage.prompt_tokens ?? 0;
-              outputTokens = parsed.usage.completion_tokens ?? 0;
-            }
-          } catch {
-            // Skip malformed SSE frames.
-          }
-        }
+        const toolResultMsg: MimoToolResultMessage = {
+          role: 'tool',
+          tool_call_id: tc.id,
+          content,
+        };
+        messages.push(toolResultMsg);
       }
-    } finally {
-      reader.releaseLock();
-      this.abortController = null;
+
+      // Loop back: send the updated conversation with tool results to the model.
     }
 
     const totalTokens = inputTokens + outputTokens;
@@ -238,7 +394,7 @@ export class MimoChatRuntime implements ChatRuntime {
           contextTokens: inputTokens,
           contextWindow,
           inputTokens,
-          model: selectedModel,
+          model,
           percentage: inputTokens / contextWindow,
         },
       };

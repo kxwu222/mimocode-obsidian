@@ -70,7 +70,7 @@
     }
   },
   "settings": {
-    "title": "MiMo Code & Chat Settings",
+    "title": "MiMo Settings",
     "tabs": {
       "general": "General",
       "claude": "Claude",
@@ -106,7 +106,7 @@
     "titleModel": {
       "name": "Title generation model",
       "desc": "Model used for auto-generating conversation titles.",
-      "auto": "Auto (MiMo V2.5)"
+      "auto": "Auto (Mimo V2.5)"
     },
     "navMappings": {
       "name": "Vim-style navigation mappings",

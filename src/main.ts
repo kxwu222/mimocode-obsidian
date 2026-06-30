@@ -62,7 +62,7 @@ export default class ClaudianPlugin extends Plugin {
       (leaf) => new ClaudianView(leaf, this)
     );
 
-    this.addRibbonIcon('bot', 'Open MiMo Code', () => {
+    this.addRibbonIcon('bot', 'Open MiMo', () => {
       void this.activateView();
     });
 

@@ -1,27 +1,29 @@
-# MiMo Chat & Obsidian
+# MiMo for Obsidian
 
 ![License](https://img.shields.io/github/license/kxwu222/mimocode-obsidian)
 ![GitHub release](https://img.shields.io/github/v/release/kxwu222/mimocode-obsidian)
 
-An Obsidian plugin that embeds [Xiaomi MiMo](https://mimo.mi.com) as an AI coding assistant in your vault sidebar. Powered by the **MiMo Token Plan API** — subscribe once, chat as much as you want.
+An Obsidian plugin that brings [Xiaomi MiMo](https://mimo.mi.com) into your vault sidebar as an AI assistant.
 
 ## Features
 
-**Chat sidebar** — Open a persistent chat panel from the ribbon icon or command palette. MiMo reads and writes files in your vault, answers coding questions, and helps you think through problems.
+**Chat sidebar** — Open a persistent chat panel from the ribbon or command palette. MiMo can answer questions, help you think through problems, and work with your vault content step by step.
 
-**Inline Edit** — Select text in a note and use the inline-edit hotkey to have MiMo rewrite it in place, with a word-level diff preview before applying.
+**MCP tool use** — Connect MCP servers to let MiMo read and write vault files, search the web, and run multi-step agentic tasks autonomously.
 
-**Instruction Refinement** — Type `#` in the chat input to refine a custom system instruction interactively.
+**Inline Edit** — Select any text in a note and invoke the inline-edit hotkey. MiMo rewrites it in place, with a word-level diff preview before you commit.
 
-**Conversation History** — All conversations are stored locally in your vault (`.claudian/sessions/`). Resume, browse, and delete past sessions.
+**Instruction Refinement** — Type `#` in the chat input to interactively refine a custom system instruction.
 
-**Multi-Tab** — Open multiple chat tabs for parallel conversations.
+**Conversation History** — Sessions are saved locally in your vault. Resume, browse, or delete past conversations at any time.
 
-**Image Attachments** — Attach images to your messages (supported by `mimo-v2.5` multimodal model).
+**Multi-Tab** — Run multiple chat tabs in parallel for separate contexts or tasks.
+
+**Image Attachments** — Drop images directly into messages.
 
 ## Requirements
 
-- Obsidian desktop (v1.7.2 or later)
+- Obsidian desktop v1.7.2 or later
 - A Xiaomi MiMo API key — either billing type works:
 
 | Billing type | Key format | Best for |
@@ -31,21 +33,21 @@ An Obsidian plugin that embeds [Xiaomi MiMo](https://mimo.mi.com) as an AI codin
 
 ## Setup
 
-1. Install the plugin from Obsidian's Community Plugins (search **MiMo Code**).
-2. Go to **Settings → MiMo Code**.
+1. Install from Obsidian Community Plugins — search **MiMo**.
+2. Open **Settings → MiMo**.
 3. Toggle **Enable MiMo** on.
 4. Set **Billing mode** to match your account type.
 5. Paste your **API key** (`tp-xxxxx` for Token Plan, `sk-xxxxx` for pay as you go).
-6. Token Plan users: choose the **cluster** closest to you (Europe, Asia Pacific, or China).
-7. Click **Test connection** to verify everything works.
-8. Open the chat sidebar from the ribbon or via the command palette (`MiMo Code: Open chat`).
+6. Token Plan users: select the **cluster** closest to you (Europe, Asia Pacific, or China).
+7. Click **Test connection** to confirm everything works.
+8. Open the sidebar from the ribbon icon or via **MiMo: Open chat** in the command palette.
 
 ## Models
 
 | Model | Description |
 |-------|-------------|
-| `mimo-v2.5-pro` | Flagship — 1T params, 42B active, 1M context (default) |
-| `mimo-v2.5` | Multimodal — supports image / video / audio inputs |
+| `mimo-v2.5-pro` | Flagship — 1T params, 42B active, 1M context, native MCP tool calling (default) |
+| `mimo-v2.5` | Multimodal — image, video, and audio input support |
 
 ## API Endpoints
 
@@ -54,7 +56,7 @@ An Obsidian plugin that embeds [Xiaomi MiMo](https://mimo.mi.com) as an AI codin
 https://api.xiaomimimo.com/v1
 ```
 
-**Token Plan** — choose the cluster closest to you:
+**Token Plan** — pick the cluster closest to you:
 
 | Region | Base URL |
 |--------|----------|
@@ -64,11 +66,11 @@ https://api.xiaomimimo.com/v1
 
 ## Privacy
 
-Your messages and vault context are sent to Xiaomi MiMo's API servers according to their [Terms of Service](https://mimo.mi.com). Conversation history is stored locally in your vault under `.claudian/sessions/`. No data is collected by this plugin.
+Your messages and vault context are sent to Xiaomi MiMo's API servers in accordance with their [Terms of Service](https://mimo.mi.com). Conversation history is stored locally in your vault. This plugin collects no data.
 
 ## Credits
 
-MiMo Code is a fork of [Claudian](https://github.com/YishenTu/claudian) by [Yishen Tu](https://github.com/YishenTu). Claudian pioneered the architecture for embedding AI coding agents as first-class Obsidian sidebar tools. This fork adapts that work for the Xiaomi MiMo API. Thank you Yishen for the excellent foundation.
+MiMo is built on top of [Claudian](https://github.com/YishenTu/claudian) by [Yishen Tu](https://github.com/YishenTu). Thanks for the solid foundation.
 
 ## License
 

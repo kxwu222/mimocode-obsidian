@@ -13,10 +13,35 @@ export interface MimoImageUrlContent {
 
 export type MimoContentPart = MimoTextContent | MimoImageUrlContent;
 
-export interface MimoMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string | MimoContentPart[];
+/** Serialised tool call reference embedded in an assistant message. */
+export interface MimoToolCall {
+  id: string;
+  type: 'function';
+  function: {
+    name: string;
+    arguments: string;
+  };
 }
+
+/** Assistant turn — may carry text content, tool calls, or both. */
+export interface MimoAssistantMessage {
+  role: 'assistant';
+  content: string | null;
+  tool_calls?: MimoToolCall[];
+}
+
+/** Tool result message sent after a tool call. */
+export interface MimoToolResultMessage {
+  role: 'tool';
+  tool_call_id: string;
+  content: string;
+}
+
+export type MimoMessage =
+  | { role: 'system'; content: string }
+  | { role: 'user'; content: string | MimoContentPart[] }
+  | MimoAssistantMessage
+  | MimoToolResultMessage;
 
 export function buildMimoMessages(
   turn: PreparedChatTurn,

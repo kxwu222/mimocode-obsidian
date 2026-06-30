@@ -24,7 +24,6 @@ import type { ChatMessage, ClaudianSettings, Conversation, StreamChunk } from '.
 import { t } from '../../../i18n/i18n';
 import type ClaudianPlugin from '../../../main';
 import { SlashCommandDropdown } from '../../../shared/components/SlashCommandDropdown';
-import { getEnhancedPath } from '../../../utils/env';
 import { getVaultPath } from '../../../utils/path';
 import { BrowserSelectionController } from '../controllers/BrowserSelectionController';
 import { CanvasSelectionController } from '../controllers/CanvasSelectionController';
@@ -36,10 +35,8 @@ import { StreamController } from '../controllers/StreamController';
 import { MessageRenderer } from '../rendering/MessageRenderer';
 import { cleanupThinkingBlock } from '../rendering/ThinkingBlockRenderer';
 import { findRewindContext } from '../rewind';
-import { BangBashService } from '../services/BangBashService';
 import { SubagentManager } from '../services/SubagentManager';
 import { ChatState } from '../state/ChatState';
-import { BangBashModeManager as BangBashModeManagerClass } from '../ui/BangBashModeManager';
 import { FileContextManager } from '../ui/FileContext';
 import { ImageContextManager } from '../ui/ImageContext';
 import { createInputToolbar } from '../ui/InputToolbar';
@@ -758,42 +755,8 @@ function initializeInstructionAndTodo(tab: TabData, plugin: ClaudianPlugin): voi
     }
   );
 
-  // Bang bash mode (! command execution)
-  if (isBangBashEnabled(plugin.settings)) {
-    const vaultPath = getVaultPath(plugin.app);
-    if (vaultPath) {
-      const enhancedPath = getEnhancedPath();
-      const bashService = new BangBashService(vaultPath, enhancedPath);
-
-      tab.ui.bangBashModeManager = new BangBashModeManagerClass(
-        dom.inputEl,
-        {
-          onSubmit: async (command) => {
-            const statusPanel = tab.ui.statusPanel;
-            if (!statusPanel) return;
-
-            const id = `bash-${Date.now()}`;
-            statusPanel.addBashOutput({ id, command, status: 'running', output: '' });
-
-            const result = await bashService.execute(command);
-            const output = [result.stdout, result.stderr, result.error].filter(Boolean).join('\n').trim();
-            const status = result.exitCode === 0 ? 'completed' : 'error';
-            statusPanel.updateBashOutput(id, { status, output, exitCode: result.exitCode });
-          },
-          getInputWrapper: () => dom.inputWrapper,
-        }
-      );
-    }
-  }
-
   tab.ui.statusPanel = new StatusPanel();
   tab.ui.statusPanel.mount(dom.statusPanelContainerEl);
-}
-
-function isBangBashEnabled(settings: Record<string, unknown>): boolean {
-  return ProviderRegistry.getEnabledProviderIds(settings).some((providerId) => (
-    ProviderRegistry.getChatUIConfig(providerId).isBangBashEnabled?.(settings) ?? false
-  ));
 }
 
 /**

@@ -10,6 +10,6 @@ export const MIMO_PROVIDER_CAPABILITIES: Readonly<ProviderCapabilities> = Object
   supportsProviderCommands: false,
   supportsImageAttachments: true,
   supportsInstructionMode: true,
-  supportsMcpTools: false,
+  supportsMcpTools: true,
   reasoningControl: 'none',
 });

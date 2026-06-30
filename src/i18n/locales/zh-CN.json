@@ -70,7 +70,7 @@
     }
   },
   "settings": {
-    "title": "MiMo Code 设置",
+    "title": "MiMo 设置",
     "tabs": {
       "general": "通用",
       "claude": "Claude",
@@ -298,7 +298,7 @@
       "desc": "Write 和 Edit diff 首次出现时以展开状态显示。"
     },
     "chatViewPlacement": {
-      "name": "MiMo Code 打开位置",
+      "name": "MiMo 打开位置",
       "desc": "选择新建聊天面板时的打开位置",
       "rightSidebar": "右侧边栏",
       "leftSidebar": "左侧边栏",
