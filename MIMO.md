@@ -1,8 +1,6 @@
-# CLAUDE.md
-
 ## Project Overview
 
-MiMo Code is a fork of [Claudian](https://github.com/YishenTu/claudian) that strips the plugin to a single provider: **Xiaomi MiMo**, accessed via the MiMo Token Plan API or Pay-as-you-go API (OpenAI-compatible HTTP). The only registered provider is `mimo` in `src/providers/mimo/`.
+MiMo Chat is a fork of [Claudian](https://github.com/YishenTu/claudian) that strips the plugin to a single provider: **Xiaomi MiMo**, accessed via the MiMo Token Plan API or Pay-as-you-go API (OpenAI-compatible HTTP). The only registered provider is `mimo` in `src/providers/mimo/`.
 
 Other provider source directories (`claude/`, `codex/`, `opencode/`, `pi/`, `acp/`) are preserved unchanged to keep the test suite green, but they are not registered at runtime.
 

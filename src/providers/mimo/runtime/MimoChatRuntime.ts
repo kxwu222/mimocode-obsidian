@@ -28,7 +28,7 @@ import { appendCanvasContext } from '../../../utils/canvas';
 import { appendCurrentNote } from '../../../utils/context';
 import { appendEditorContext } from '../../../utils/editor';
 import { MIMO_PROVIDER_CAPABILITIES } from '../capabilities';
-import { getMimoBaseUrl, getMimoProviderSettings } from '../settings';
+import { getMimoBaseUrl, getMimoProviderSettings, isMimoModel } from '../settings';
 import { buildMimoMessages } from './buildMimoMessages';
 
 const MIMO_SYSTEM_PROMPT =
@@ -110,10 +110,10 @@ export class MimoChatRuntime implements ChatRuntime {
 
     const messages = buildMimoMessages(turn, conversationHistory, MIMO_SYSTEM_PROMPT);
 
-    // Resolve the model: prefer tab-level selection, fall back to provider default.
-    const selectedModel = typeof settings.model === 'string' && settings.model.trim()
-      ? settings.model.trim()
-      : mimoSettings.model;
+    // Resolve the model: use tab-level selection only when it is a valid MiMo model,
+    // so stale Claude model names stored in settings never reach the MiMo API.
+    const rawModel = typeof settings.model === 'string' ? settings.model.trim() : '';
+    const selectedModel = rawModel && isMimoModel(rawModel) ? rawModel : mimoSettings.model;
 
     const baseUrl = getMimoBaseUrl(mimoSettings);
 

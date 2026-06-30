@@ -15,7 +15,6 @@ export const MIMO_CLUSTER_URLS: Record<MimoCluster, string> = {
 
 export const MIMO_MODELS = [
   { value: 'mimo-v2.5-pro', label: 'MiMo V2.5 Pro', description: '1T params · 42B active · 1M context' },
-  { value: 'mimo-v2.5-pro-ultraspeed', label: 'MiMo V2.5 Pro UltraSpeed', description: 'High-throughput variant' },
   { value: 'mimo-v2.5', label: 'MiMo V2.5', description: 'Multimodal · image / video / audio' },
 ] as const;
 
@@ -35,7 +34,7 @@ export const DEFAULT_MIMO_PROVIDER_SETTINGS: Readonly<PersistedMimoProviderSetti
   billingMode: 'token-plan',
   apiKey: '',
   cluster: 'ams',
-  model: 'mimo-v2.5-pro',
+  model: 'mimo-v2.5',
 });
 
 export function getMimoProviderSettings(settings: Record<string, unknown>): PersistedMimoProviderSettings {

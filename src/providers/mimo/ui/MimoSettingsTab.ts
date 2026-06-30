@@ -1,6 +1,7 @@
 import { Notice, Setting } from 'obsidian';
 
 import type { ProviderSettingsTabRenderer } from '../../../core/providers/types';
+import { getLocale } from '../../../i18n/i18n';
 import {
   getMimoBaseUrl,
   getMimoProviderSettings,
@@ -12,19 +13,126 @@ import {
   updateMimoProviderSettings,
 } from '../settings';
 
+type MimoStrings = typeof MIMO_STRINGS_EN;
+
+const MIMO_STRINGS_EN = {
+  setupHeading: 'Setup',
+  enableName: 'Enable MiMo',
+  enableDesc: 'Use Xiaomi MiMo as the AI provider in this vault.',
+  billingHeading: 'Billing',
+  billingModeName: 'Billing mode',
+  billingModeDesc: 'Token Plan uses a subscription key (tp-xxxxx). Pay as you go uses a usage-based key (sk-xxxxx).',
+  tokenPlanOption: 'Token Plan (tp-xxxxx)',
+  paygOption: 'Pay as you go (sk-xxxxx)',
+  clusterName: 'Cluster',
+  clusterDesc: 'Select the Token Plan server cluster geographically closest to you.',
+  clusterAms: 'Europe — Amsterdam',
+  clusterSgp: 'Asia Pacific — Singapore',
+  clusterCn: 'China',
+  credentialsHeading: 'Credentials',
+  apiKeyName: 'API key',
+  apiKeyDesc: 'Token Plan key starts with tp-xxxxx. Pay-as-you-go key starts with sk-xxxxx.',
+  apiKeyPlaceholder: 'tp-xxxxx  or  sk-xxxxx',
+  testConnectionName: 'Test connection',
+  testConnectionDesc: 'Send a quick request to verify your key is working.',
+  testButton: 'Test',
+  testingButton: 'Testing…',
+  testEmptyKey: 'MiMo: API key is empty. Enter your key above first.',
+  testSuccess: 'MiMo: Connection successful ✓',
+  modelHeading: 'Model',
+  defaultModelName: 'Default model',
+  defaultModelDesc: 'Model used when no per-tab selection is active.',
+  advancedHeading: 'Advanced',
+  baseUrlName: 'Base URL',
+  baseUrlDesc: (paygUrl: string) => `Read-only. Token Plan: cluster-specific endpoint. Pay as you go: ${paygUrl}.`,
+  clusterUrlsName: 'Token Plan cluster URLs',
+};
+
+const MIMO_STRINGS_ZH_CN: MimoStrings = {
+  setupHeading: '设置',
+  enableName: '启用 MiMo',
+  enableDesc: '在此 Vault 中使用小米 MiMo 作为 AI 提供商。',
+  billingHeading: '计费',
+  billingModeName: '计费模式',
+  billingModeDesc: 'Token Plan 使用订阅密钥（tp-xxxxx），按量付费使用按用量计费密钥（sk-xxxxx）。',
+  tokenPlanOption: 'Token Plan（tp-xxxxx）',
+  paygOption: '按量付费（sk-xxxxx）',
+  clusterName: '服务器集群',
+  clusterDesc: '选择地理位置距您最近的 Token Plan 服务器集群。',
+  clusterAms: '欧洲 — 阿姆斯特丹',
+  clusterSgp: '亚太 — 新加坡',
+  clusterCn: '中国',
+  credentialsHeading: '凭据',
+  apiKeyName: 'API 密钥',
+  apiKeyDesc: 'Token Plan 密钥以 tp-xxxxx 开头，按量付费密钥以 sk-xxxxx 开头。',
+  apiKeyPlaceholder: 'tp-xxxxx 或 sk-xxxxx',
+  testConnectionName: '测试连接',
+  testConnectionDesc: '发送快速请求以验证您的密钥是否有效。',
+  testButton: '测试',
+  testingButton: '测试中…',
+  testEmptyKey: 'MiMo：API 密钥为空，请先输入密钥。',
+  testSuccess: 'MiMo：连接成功 ✓',
+  modelHeading: '模型',
+  defaultModelName: '默认模型',
+  defaultModelDesc: '未单独选择模型时使用此默认模型。',
+  advancedHeading: '高级',
+  baseUrlName: '基础 URL',
+  baseUrlDesc: (paygUrl: string) => `只读。Token Plan 使用集群专属地址，按量付费使用 ${paygUrl}。`,
+  clusterUrlsName: 'Token Plan 集群地址',
+};
+
+const MIMO_STRINGS_ZH_TW: MimoStrings = {
+  setupHeading: '設定',
+  enableName: '啟用 MiMo',
+  enableDesc: '在此 Vault 中使用小米 MiMo 作為 AI 提供商。',
+  billingHeading: '計費',
+  billingModeName: '計費模式',
+  billingModeDesc: 'Token Plan 使用訂閱金鑰（tp-xxxxx），按量付費使用按用量計費金鑰（sk-xxxxx）。',
+  tokenPlanOption: 'Token Plan（tp-xxxxx）',
+  paygOption: '按量付費（sk-xxxxx）',
+  clusterName: '伺服器叢集',
+  clusterDesc: '選擇地理位置距您最近的 Token Plan 伺服器叢集。',
+  clusterAms: '歐洲 — 阿姆斯特丹',
+  clusterSgp: '亞太 — 新加坡',
+  clusterCn: '中國',
+  credentialsHeading: '憑證',
+  apiKeyName: 'API 金鑰',
+  apiKeyDesc: 'Token Plan 金鑰以 tp-xxxxx 開頭，按量付費金鑰以 sk-xxxxx 開頭。',
+  apiKeyPlaceholder: 'tp-xxxxx 或 sk-xxxxx',
+  testConnectionName: '測試連線',
+  testConnectionDesc: '發送快速請求以驗證您的金鑰是否有效。',
+  testButton: '測試',
+  testingButton: '測試中…',
+  testEmptyKey: 'MiMo：API 金鑰為空，請先輸入金鑰。',
+  testSuccess: 'MiMo：連線成功 ✓',
+  modelHeading: '模型',
+  defaultModelName: '預設模型',
+  defaultModelDesc: '未單獨選擇模型時使用此預設模型。',
+  advancedHeading: '進階',
+  baseUrlName: '基礎 URL',
+  baseUrlDesc: (paygUrl: string) => `唯讀。Token Plan 使用叢集專屬位址，按量付費使用 ${paygUrl}。`,
+  clusterUrlsName: 'Token Plan 叢集位址',
+};
+
+function getMimoStrings(): MimoStrings {
+  const locale = getLocale();
+  if (locale === 'zh-CN') return MIMO_STRINGS_ZH_CN;
+  if (locale === 'zh-TW') return MIMO_STRINGS_ZH_TW;
+  return MIMO_STRINGS_EN;
+}
+
 export const mimoSettingsTabRenderer: ProviderSettingsTabRenderer = {
   render(container, context) {
+    const s = getMimoStrings();
     const settingsBag = context.plugin.settings as unknown as Record<string, unknown>;
 
     // ── Setup ────────────────────────────────────────────────────────────────
 
-    new Setting(container).setName('Setup').setHeading();
+    new Setting(container).setName(s.setupHeading).setHeading();
 
     new Setting(container)
-      // eslint-disable-next-line obsidianmd/ui/sentence-case
-      .setName('Enable MiMo')
-      // eslint-disable-next-line obsidianmd/ui/sentence-case
-      .setDesc('Use Xiaomi MiMo as the AI provider in this vault.')
+      .setName(s.enableName)
+      .setDesc(s.enableDesc)
       .addToggle((toggle) =>
         toggle
           .setValue(getMimoProviderSettings(settingsBag).enabled)
@@ -37,7 +145,7 @@ export const mimoSettingsTabRenderer: ProviderSettingsTabRenderer = {
 
     // ── Billing mode ─────────────────────────────────────────────────────────
 
-    new Setting(container).setName('Billing').setHeading();
+    new Setting(container).setName(s.billingHeading).setHeading();
 
     // Cluster row — shown/hidden depending on billing mode.
     let clusterSetting: Setting | null = null;
@@ -49,14 +157,12 @@ export const mimoSettingsTabRenderer: ProviderSettingsTabRenderer = {
     };
 
     new Setting(container)
-      .setName('Billing mode')
-      // eslint-disable-next-line obsidianmd/ui/sentence-case
-      .setDesc('Token Plan uses a subscription key (tp-xxxxx). Pay as you go uses a usage-based key (sk-xxxxx).')
+      .setName(s.billingModeName)
+      .setDesc(s.billingModeDesc)
       .addDropdown((dropdown) => {
         dropdown
-          // eslint-disable-next-line obsidianmd/ui/sentence-case
-          .addOption('token-plan', 'Token Plan (tp-xxxxx)')
-          .addOption('payg', 'Pay as you go (sk-xxxxx)')
+          .addOption('token-plan', s.tokenPlanOption)
+          .addOption('payg', s.paygOption)
           .setValue(getMimoProviderSettings(settingsBag).billingMode)
           .onChange(async (value) => {
             updateMimoProviderSettings(settingsBag, { billingMode: value as MimoBillingMode });
@@ -71,16 +177,13 @@ export const mimoSettingsTabRenderer: ProviderSettingsTabRenderer = {
       });
 
     clusterSetting = new Setting(container)
-      .setName('Cluster')
-      // eslint-disable-next-line obsidianmd/ui/sentence-case
-      .setDesc('Select the Token Plan server cluster geographically closest to you.')
+      .setName(s.clusterName)
+      .setDesc(s.clusterDesc)
       .addDropdown((dropdown) => {
         dropdown
-          // eslint-disable-next-line obsidianmd/ui/sentence-case
-          .addOption('ams', 'Europe — Amsterdam')
-          // eslint-disable-next-line obsidianmd/ui/sentence-case
-          .addOption('sgp', 'Asia Pacific — Singapore')
-          .addOption('cn', 'China')
+          .addOption('ams', s.clusterAms)
+          .addOption('sgp', s.clusterSgp)
+          .addOption('cn', s.clusterCn)
           .setValue(getMimoProviderSettings(settingsBag).cluster)
           .onChange(async (value) => {
             updateMimoProviderSettings(settingsBag, { cluster: value as MimoCluster });
@@ -97,16 +200,14 @@ export const mimoSettingsTabRenderer: ProviderSettingsTabRenderer = {
 
     // ── Credentials ──────────────────────────────────────────────────────────
 
-    new Setting(container).setName('Credentials').setHeading();
+    new Setting(container).setName(s.credentialsHeading).setHeading();
 
     new Setting(container)
-      .setName('API key')
-      // eslint-disable-next-line obsidianmd/ui/sentence-case
-      .setDesc('Token Plan key starts with tp-xxxxx. Pay-as-you-go key starts with sk-xxxxx.')
+      .setName(s.apiKeyName)
+      .setDesc(s.apiKeyDesc)
       .addText((text) => {
         text
-          // eslint-disable-next-line obsidianmd/ui/sentence-case
-          .setPlaceholder('tp-xxxxx  or  sk-xxxxx')
+          .setPlaceholder(s.apiKeyPlaceholder)
           .setValue(getMimoProviderSettings(settingsBag).apiKey)
           .onChange(async (value) => {
             updateMimoProviderSettings(settingsBag, { apiKey: value.trim() });
@@ -117,20 +218,19 @@ export const mimoSettingsTabRenderer: ProviderSettingsTabRenderer = {
       });
 
     new Setting(container)
-      .setName('Test connection')
-      .setDesc('Send a quick request to verify your key is working.')
+      .setName(s.testConnectionName)
+      .setDesc(s.testConnectionDesc)
       .addButton((button) => {
         button
-          .setButtonText('Test')
+          .setButtonText(s.testButton)
           .onClick(async () => {
             const mimoSettings = getMimoProviderSettings(settingsBag);
             if (!mimoSettings.apiKey) {
-              // eslint-disable-next-line obsidianmd/ui/sentence-case
-              new Notice('MiMo: API key is empty. Enter your key above first.');
+              new Notice(s.testEmptyKey);
               return;
             }
 
-            button.setButtonText('Testing…').setDisabled(true);
+            button.setButtonText(s.testingButton).setDisabled(true);
             try {
               const baseUrl = getMimoBaseUrl(mimoSettings);
               const response = await fetch(`${baseUrl}/chat/completions`, {
@@ -147,8 +247,7 @@ export const mimoSettingsTabRenderer: ProviderSettingsTabRenderer = {
               });
 
               if (response.ok) {
-                // eslint-disable-next-line obsidianmd/ui/sentence-case
-                new Notice('MiMo: Connection successful ✓');
+                new Notice(s.testSuccess);
               } else {
                 const text = await response.text().catch(() => '');
                 new Notice(`MiMo error ${response.status}: ${text.slice(0, 120) || response.statusText}`);
@@ -157,18 +256,18 @@ export const mimoSettingsTabRenderer: ProviderSettingsTabRenderer = {
               const message = err instanceof Error ? err.message : 'Unknown error';
               new Notice(`MiMo: Connection failed — ${message}`);
             } finally {
-              button.setButtonText('Test').setDisabled(false);
+              button.setButtonText(s.testButton).setDisabled(false);
             }
           });
       });
 
     // ── Model ────────────────────────────────────────────────────────────────
 
-    new Setting(container).setName('Model').setHeading();
+    new Setting(container).setName(s.modelHeading).setHeading();
 
     new Setting(container)
-      .setName('Default model')
-      .setDesc('Model used when no per-tab selection is active.')
+      .setName(s.defaultModelName)
+      .setDesc(s.defaultModelDesc)
       .addDropdown((dropdown) => {
         for (const m of MIMO_MODELS) {
           dropdown.addOption(m.value, m.label);
@@ -184,26 +283,23 @@ export const mimoSettingsTabRenderer: ProviderSettingsTabRenderer = {
 
     // ── Advanced ─────────────────────────────────────────────────────────────
 
-    new Setting(container).setName('Advanced').setHeading();
+    new Setting(container).setName(s.advancedHeading).setHeading();
 
     const initialBaseUrl = getMimoBaseUrl(getMimoProviderSettings(settingsBag));
     baseUrlSetting = new Setting(container)
-      .setName('Base URL')
-      .setDesc(
-        `Read-only. Token Plan: cluster-specific endpoint. Pay as you go: ${MIMO_PAYG_BASE_URL}.`,
-      )
+      .setName(s.baseUrlName)
+      .setDesc(s.baseUrlDesc(MIMO_PAYG_BASE_URL))
       .addText((text) => {
         text.setValue(initialBaseUrl).setDisabled(true);
       });
 
-    // Token Plan cluster reference (always visible for discoverability).
     new Setting(container)
-      // eslint-disable-next-line obsidianmd/ui/sentence-case
-      .setName('Token Plan cluster URLs')
+      .setName(s.clusterUrlsName)
       .setDesc(
         `Europe: ${MIMO_CLUSTER_URLS.ams} · Singapore: ${MIMO_CLUSTER_URLS.sgp} · China: ${MIMO_CLUSTER_URLS.cn}`,
       );
 
-    context.renderCustomContextLimits(container, 'mimo');
+    const customContextEl = container.createDiv();
+    context.renderCustomContextLimits(customContextEl, 'mimo');
   },
 };

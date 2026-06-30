@@ -1,4 +1,4 @@
-# MiMo Code
+# MiMo Chat & Obsidian
 
 ![License](https://img.shields.io/github/license/kxwu222/mimocode-obsidian)
 ![GitHub release](https://img.shields.io/github/v/release/kxwu222/mimocode-obsidian)
@@ -45,7 +45,6 @@ An Obsidian plugin that embeds [Xiaomi MiMo](https://mimo.mi.com) as an AI codin
 | Model | Description |
 |-------|-------------|
 | `mimo-v2.5-pro` | Flagship — 1T params, 42B active, 1M context (default) |
-| `mimo-v2.5-pro-ultraspeed` | High-throughput variant, faster responses |
 | `mimo-v2.5` | Multimodal — supports image / video / audio inputs |
 
 ## API Endpoints

@@ -1,9 +1,9 @@
 {
   "id": "mimocode",
-  "name": "MiMo Code & Chat",
-  "version": "1.0.0",
+  "name": "MiMo Chat",
+  "version": "1.0.1",
   "minAppVersion": "1.7.2",
-  "description": "Embeds Xiaomi MiMo as an AI coding assistant in your vault sidebar.",
+  "description": "Bring Xiaomi MiMo into Obsidian — chat, search, and edit your notes with a powerful AI assistant built into your sidebar.",
   "author": "kxwu222",
   "authorUrl": "https://github.com/kxwu222/mimocode-obsidian",
   "isDesktopOnly": true

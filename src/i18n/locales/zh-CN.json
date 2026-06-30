@@ -70,7 +70,7 @@
     }
   },
   "settings": {
-    "title": "Claudian 设置",
+    "title": "MiMo Code 设置",
     "tabs": {
       "general": "通用",
       "claude": "Claude",
@@ -84,7 +84,7 @@
     "models": "模型",
     "experimental": "实验性功能",
     "userName": {
-      "name": "Claudian 应该如何称呼你？",
+      "name": "MiMo 应该如何称呼你？",
       "desc": "用于个性化问候的用户名（留空使用通用问候）"
     },
     "excludedTags": {
@@ -93,7 +93,7 @@
     },
     "mediaFolder": {
       "name": "媒体文件夹",
-      "desc": "存放附件/图片的文件夹。当笔记使用 ![[image.jpg]] 时，Claude 会在此查找。留空使用仓库根目录。"
+      "desc": "存放附件/图片的文件夹。当笔记使用 ![[image.jpg]] 时，MiMo 会在此查找。留空使用仓库根目录。"
     },
     "systemPrompt": {
       "name": "自定义系统提示词",
@@ -106,7 +106,7 @@
     "titleModel": {
       "name": "标题生成模型",
       "desc": "用于自动生成对话标题的模型。",
-      "auto": "自动 (Haiku)"
+      "auto": "自动 (MiMo V2.5)"
     },
     "navMappings": {
       "name": "Vim 风格导航映射",
@@ -158,7 +158,7 @@
     },
     "hiddenSlashCommands": {
       "name": "隐藏命令与技能",
-      "desc": "从下拉菜单中隐藏特定的命令与技能。适用于隐藏与 Claudian 无关的 Claude Code 条目。每行输入一个名称，无需前导斜杠。",
+      "desc": "从下拉菜单中隐藏特定的命令与技能。每行输入一个名称，无需前导斜杠。",
       "placeholder": "commit\nbuild\ntest"
     },
     "mcpServers": {
@@ -282,12 +282,12 @@
     },
     "maxTabs": {
       "name": "最大聊天标签数",
-      "desc": "同时开启的最大聊天标签数（3-10）。每个标签使用独立的 Claude 会话。",
+      "desc": "同时开启的最大聊天标签数（3-10）。每个标签保持独立的对话上下文。",
       "warning": "超过 5 个标签可能会影响性能和内存使用。"
     },
     "enableAutoScroll": {
       "name": "流式传输时自动滚动",
-      "desc": "在 Claude 流式传输响应时自动滚动到底部。禁用后将停留在顶部，从头开始阅读。"
+      "desc": "在 MiMo 流式传输响应时自动滚动到底部。禁用后将停留在顶部，从头开始阅读。"
     },
     "deferMathRenderingDuringStreaming": {
       "name": "流式传输时延迟渲染数学公式",
@@ -298,7 +298,7 @@
       "desc": "Write 和 Edit diff 首次出现时以展开状态显示。"
     },
     "chatViewPlacement": {
-      "name": "Claudian 打开位置",
+      "name": "MiMo Code 打开位置",
       "desc": "选择新建聊天面板时的打开位置",
       "rightSidebar": "右侧边栏",
       "leftSidebar": "左侧边栏",

@@ -18,7 +18,7 @@ export const mimoProviderRegistration: ProviderRegistration = {
   createInstructionRefineService: (plugin) => new MimoInstructionRefineService(plugin),
   createRuntime: ({ plugin }) => new MimoChatRuntime(plugin),
   createTitleGenerationService: (plugin) => new MimoTitleGenerationService(plugin),
-  displayName: 'MiMo',
+  displayName: 'Connect MiMo API',
   historyService: new MimoConversationHistoryService(),
   isEnabled: (settings) => getMimoProviderSettings(settings).enabled,
   settingsReconciler: mimoSettingsReconciler,

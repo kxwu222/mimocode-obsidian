@@ -117,7 +117,7 @@ export function getLocale(): Locale {
  * Get all available locales
  */
 export function getAvailableLocales(): Locale[] {
-  return Object.keys(translations) as Locale[];
+  return ['en', 'zh-CN', 'zh-TW'];
 }
 
 /**
