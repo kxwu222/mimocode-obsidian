@@ -1,3 +1,5 @@
+import type * as FsType from 'fs';
+import type * as OsType from 'os';
 import * as path from 'path';
 
 import { parsePathEntries, resolveNvmDefaultBin } from './path';
@@ -184,7 +186,7 @@ function getExtraBinaryPaths(): string[] {
 
 export function findNodeDirectory(additionalPaths?: string): string | null {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const fs = require('fs') as typeof import('fs');
+  const fs = require('fs') as typeof FsType;
 
   const searchPaths = getExtraBinaryPaths();
 
@@ -221,7 +223,7 @@ export function findNodeExecutable(additionalPaths?: string): string | null {
 
 export function cliPathRequiresNode(cliPath: string): boolean {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const fs = require('fs') as typeof import('fs');
+  const fs = require('fs') as typeof FsType;
 
   const jsExtensions = ['.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx'];
   const lower = cliPath.toLowerCase();
@@ -288,7 +290,7 @@ export function getEnhancedPath(additionalPaths?: string, cliPath?: string): str
   let cliDirHasNode = false;
   if (cliPath) {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const fs = require('fs') as typeof import('fs');
+    const fs = require('fs') as typeof FsType;
     try {
       const cliDir = path.dirname(cliPath);
       const nodeInCliDir = path.join(cliDir, NODE_EXECUTABLE);
@@ -403,7 +405,7 @@ export function getHostnameKey(): string {
 export function getLegacyHostnameKey(): string {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const os = require('os') as typeof import('os');
+    const os = require('os') as typeof OsType;
     return os.hostname();
   } catch {
     return '';

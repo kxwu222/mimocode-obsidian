@@ -24,7 +24,6 @@ import type { ChatMessage, ClaudianSettings, Conversation, StreamChunk } from '.
 import { t } from '../../../i18n/i18n';
 import type ClaudianPlugin from '../../../main';
 import { SlashCommandDropdown } from '../../../shared/components/SlashCommandDropdown';
-import { getVaultPath } from '../../../utils/path';
 import { BrowserSelectionController } from '../controllers/BrowserSelectionController';
 import { CanvasSelectionController } from '../controllers/CanvasSelectionController';
 import { ConversationController } from '../controllers/ConversationController';
