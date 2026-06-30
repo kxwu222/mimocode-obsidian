@@ -185,7 +185,7 @@ function getExtraBinaryPaths(): string[] {
 }
 
 export function findNodeDirectory(additionalPaths?: string): string | null {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy require keeps fs out of the top-level bundle scope so tree-shaking can eliminate it
   const fs = require('fs') as typeof FsType;
 
   const searchPaths = getExtraBinaryPaths();
@@ -222,7 +222,7 @@ export function findNodeExecutable(additionalPaths?: string): string | null {
 }
 
 export function cliPathRequiresNode(cliPath: string): boolean {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy require keeps fs out of the top-level bundle scope so tree-shaking can eliminate it
   const fs = require('fs') as typeof FsType;
 
   const jsExtensions = ['.js', '.mjs', '.cjs', '.ts', '.tsx', '.jsx'];
@@ -289,7 +289,7 @@ export function getEnhancedPath(additionalPaths?: string, cliPath?: string): str
 
   let cliDirHasNode = false;
   if (cliPath) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy require keeps fs out of the top-level bundle scope so tree-shaking can eliminate it
     const fs = require('fs') as typeof FsType;
     try {
       const cliDir = path.dirname(cliPath);
@@ -404,7 +404,7 @@ export function getHostnameKey(): string {
 
 export function getLegacyHostnameKey(): string {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy require keeps os out of the top-level bundle scope so tree-shaking can eliminate it
     const os = require('os') as typeof OsType;
     return os.hostname();
   } catch {

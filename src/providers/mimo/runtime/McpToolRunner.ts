@@ -36,7 +36,7 @@ type LegacySseTransportConstructor = new (
 ) => Transport;
 
 function createLegacySseTransport(url: URL, options: unknown): Transport {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- SSE transport is loaded lazily to avoid bundling it when unused
   const module = require('@modelcontextprotocol/sdk/client/sse') as {
     SSEClientTransport: LegacySseTransportConstructor;
   };
