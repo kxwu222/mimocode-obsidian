@@ -22,17 +22,23 @@ An Obsidian plugin that embeds [Xiaomi MiMo](https://mimo.mi.com) as an AI codin
 ## Requirements
 
 - Obsidian desktop (v1.7.2 or later)
-- A [MiMo Token Plan](https://mimo.mi.com/docs/en-US/tokenplan/Token%20Plan/quick-access) subscription (`tp-xxxxx` API key)
+- A Xiaomi MiMo API key — either billing type works:
+
+| Billing type | Key format | Best for |
+|---|---|---|
+| [Token Plan](https://mimo.mi.com/docs/en-US/tokenplan/Token%20Plan/quick-access) | `tp-xxxxx` | Heavy use — flat monthly/yearly fee |
+| [Pay as you go](https://platform.xiaomimimo.com) | `sk-xxxxx` | Occasional use — pay per token |
 
 ## Setup
 
 1. Install the plugin from Obsidian's Community Plugins (search **MiMo Code**).
 2. Go to **Settings → MiMo Code**.
 3. Toggle **Enable MiMo** on.
-4. Paste your **Token Plan API key** (`tp-xxxxx`).
-5. Choose the **cluster** closest to you (Europe, Asia Pacific, or China).
-6. Click **Test connection** to verify everything works.
-7. Open the chat sidebar from the ribbon or via the command palette (`MiMo Code: Open chat`).
+4. Set **Billing mode** to match your account type.
+5. Paste your **API key** (`tp-xxxxx` for Token Plan, `sk-xxxxx` for pay as you go).
+6. Token Plan users: choose the **cluster** closest to you (Europe, Asia Pacific, or China).
+7. Click **Test connection** to verify everything works.
+8. Open the chat sidebar from the ribbon or via the command palette (`MiMo Code: Open chat`).
 
 ## Models
 
@@ -42,7 +48,14 @@ An Obsidian plugin that embeds [Xiaomi MiMo](https://mimo.mi.com) as an AI codin
 | `mimo-v2.5-pro-ultraspeed` | High-throughput variant, faster responses |
 | `mimo-v2.5` | Multimodal — supports image / video / audio inputs |
 
-## Cluster URLs
+## API Endpoints
+
+**Pay as you go** — single global endpoint:
+```
+https://api.xiaomimimo.com/v1
+```
+
+**Token Plan** — choose the cluster closest to you:
 
 | Region | Base URL |
 |--------|----------|
@@ -53,6 +66,10 @@ An Obsidian plugin that embeds [Xiaomi MiMo](https://mimo.mi.com) as an AI codin
 ## Privacy
 
 Your messages and vault context are sent to Xiaomi MiMo's API servers according to their [Terms of Service](https://mimo.mi.com). Conversation history is stored locally in your vault under `.claudian/sessions/`. No data is collected by this plugin.
+
+## Credits
+
+MiMo Code is a fork of [Claudian](https://github.com/YishenTu/claudian) by [Yishen Tu](https://github.com/YishenTu). Claudian pioneered the architecture for embedding AI coding agents as first-class Obsidian sidebar tools. This fork adapts that work for the Xiaomi MiMo API. Thank you Yishen for the excellent foundation.
 
 ## License
 

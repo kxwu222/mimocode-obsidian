@@ -2,16 +2,17 @@
 
 ## Project Overview
 
-Claudian is an Obsidian plugin that embeds provider-backed chat runtimes in a sidebar and inline-edit flow. Claude is the default provider. Codex is optional and joins the same conversation model through `Conversation.providerId` plus provider-owned `providerState`.
+MiMo Code is a fork of [Claudian](https://github.com/YishenTu/claudian) that strips the plugin to a single provider: **Xiaomi MiMo**, accessed via the MiMo Token Plan API or Pay-as-you-go API (OpenAI-compatible HTTP). The only registered provider is `mimo` in `src/providers/mimo/`.
+
+Other provider source directories (`claude/`, `codex/`, `opencode/`, `pi/`, `acp/`) are preserved unchanged to keep the test suite green, but they are not registered at runtime.
 
 ## Architecture Status
 
-- Product status: Claudian is a multi-provider product. Claude is the full-feature provider. Codex is opt-in and currently supports send, stream, cancel, resume, history reload, fork, plan mode, image attachments, inline edit, `#` instruction mode, `$` skills, and subagents. Unsupported or gated Codex surfaces are rewind, runtime-discovered provider commands, in-app MCP management, and Claude plugin integration.
+- Product: MiMo Code — single-provider, HTTP-only (no CLI subprocess). `MimoChatRuntime` uses `fetch` + SSE against `https://api.xiaomimimo.com/v1` (PAYG) or cluster-specific Token Plan URLs.
 - App shell: `src/app/` owns shared settings defaults and plugin-level storage helpers. `src/core/` owns provider-neutral runtime, registry, tool, and type contracts.
-- Provider boundary: `src/core/runtime/` and `src/core/providers/` define the chat-facing seam. `ProviderRegistry` creates runtimes and provider-owned auxiliary services. `ProviderWorkspaceRegistry` owns workspace services such as command catalogs, agent mention providers, CLI resolution, MCP managers, and provider settings tabs.
-- Claude adaptor: `src/providers/claude/` owns the Claude runtime, prompt encoding, stream transforms, history hydration, CLI resolution, plugin and agent discovery, MCP storage, and Claude-specific settings UI. `ClaudeCommandCatalog` merges vault commands, vault skills, and runtime-supported commands behind the shared command catalog contract.
-- Codex adaptor: `src/providers/codex/` owns the `codex app-server` runtime, JSON-RPC transport, prompt encoding, raw live stream projection, JSONL history reload, settings reconciliation, normalization, skill cataloging, subagent storage, and Codex settings UI. `CodexSkillCatalog` provides `$` skill discovery from `.codex/skills/` and `.agents/skills/` without relying on runtime command discovery.
-- Conversations: `Conversation` carries `providerId` and opaque `providerState`. Claude state is typed behind `ClaudeProviderState`. Codex state is typed behind `CodexProviderState` and currently stores `threadId`, `sessionFilePath`, and optional fork metadata.
+- Provider boundary: `src/core/runtime/` and `src/core/providers/` define the chat-facing seam. Only `mimo` is registered in `src/providers/index.ts`.
+- Mimo adaptor: `src/providers/mimo/` owns the HTTP runtime, settings (billing mode, API key, cluster, model), capabilities, no-op history service, settings reconciler, chat UI config, settings tab, and auxiliary services (title gen, inline edit, instruction refine via `MimoAuxQueryRunner`).
+- Conversations: `Conversation` carries `providerId: 'mimo'`. Mimo is stateless — no `providerState` or `sessionId` is persisted.
 
 ## Commands
 
