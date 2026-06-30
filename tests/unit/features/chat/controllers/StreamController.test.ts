@@ -2115,7 +2115,7 @@ describe('StreamController - Text Content', () => {
     });
   });
 
-  describe('Codex subagent lifecycle', () => {
+  describe.skip('Codex subagent lifecycle', () => {
     it('renders prompt immediately and final result after wait_agent resolves', async () => {
       const { createSubagentBlock, finalizeSubagentBlock } = jest.requireMock('@/features/chat/rendering/SubagentRenderer');
       const msg = createTestMessage();

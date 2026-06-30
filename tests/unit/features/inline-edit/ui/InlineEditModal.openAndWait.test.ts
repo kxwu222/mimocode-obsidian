@@ -208,14 +208,13 @@ describe('InlineEditModal - openAndWait', () => {
       const plugin = {
         settings: {
           hiddenProviderCommands: {
-            claude: ['commit'],
-            codex: ['analyze'],
+            mimo: ['analyze'],
           },
         },
         getConversationSync: jest.fn().mockReturnValue(null),
         getView: jest.fn().mockReturnValue({
           getActiveTab: jest.fn().mockReturnValue({
-            providerId: 'codex',
+            providerId: 'mimo',
             service: null,
             conversationId: null,
           }),

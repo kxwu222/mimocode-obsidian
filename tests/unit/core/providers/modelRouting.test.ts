@@ -1,91 +1,24 @@
 import '@/providers';
 
 import { getEnabledProviderForModel, getProviderForModel } from '@/core/providers/modelRouting';
-import { DEFAULT_CODEX_PRIMARY_MODEL } from '@/providers/codex/types/models';
 
 describe('getProviderForModel', () => {
-  it('routes Claude default models to claude', () => {
-    expect(getProviderForModel('haiku')).toBe('claude');
-    expect(getProviderForModel('sonnet')).toBe('claude');
-    expect(getProviderForModel('opus')).toBe('claude');
+  it('routes mimo model ids to mimo', () => {
+    expect(getProviderForModel('mimo-v2.5')).toBe('mimo');
+    expect(getProviderForModel('mimo-v2.5-pro')).toBe('mimo');
+    expect(getProviderForModel('mimo-v2.5-pro-max')).toBe('mimo');
   });
 
-  it('routes Claude extended models to claude', () => {
-    expect(getProviderForModel('claude-sonnet-4-5-20250514')).toBe('claude');
-    expect(getProviderForModel('claude-opus-4-6-20250616')).toBe('claude');
+  it('routes unknown models to mimo (default)', () => {
+    expect(getProviderForModel('some-unknown-model')).toBe('mimo');
   });
 
-  it('routes Codex default models to codex', () => {
-    expect(getProviderForModel(DEFAULT_CODEX_PRIMARY_MODEL)).toBe('codex');
-  });
-
-  it('routes unknown models to claude (default)', () => {
-    expect(getProviderForModel('some-unknown-model')).toBe('claude');
-  });
-
-  it('routes models starting with gpt- to codex', () => {
-    expect(getProviderForModel('gpt-4o')).toBe('codex');
-    expect(getProviderForModel('gpt-custom')).toBe('codex');
-  });
-
-  it('routes models starting with o prefix to codex', () => {
-    expect(getProviderForModel('o3')).toBe('codex');
-    expect(getProviderForModel('o4-mini')).toBe('codex');
-  });
-
-  it('routes custom OPENAI_MODEL to codex when settings are provided', () => {
-    const settings = { environmentVariables: 'OPENAI_MODEL=my-custom-model' };
-    expect(getProviderForModel('my-custom-model', settings)).toBe('codex');
-  });
-
-  it('routes provider-qualified custom model ids without raw name collisions', () => {
+  it('returns mimo for enabled provider lookup with a mimo model', () => {
     const settings = {
       providerConfigs: {
-        claude: {
-          customModels: 'deepseek-v4-pro',
-        },
-        codex: {
-          enabled: true,
-          customModels: 'deepseek-v4-pro',
-        },
+        mimo: { enabled: true },
       },
     };
-
-    expect(getProviderForModel('claude-code/deepseek-v4-pro', settings)).toBe('claude');
-    expect(getProviderForModel('openai-codex/deepseek-v4-pro', settings)).toBe('codex');
-  });
-
-  it('routes settings-defined custom Codex models to codex when settings are provided', () => {
-    const settings = {
-      providerConfigs: {
-        codex: {
-          enabled: true,
-          customModels: 'my-custom-model',
-        },
-      },
-    };
-
-    expect(getProviderForModel('my-custom-model', settings)).toBe('codex');
-  });
-
-  it('routes custom OPENAI_MODEL to claude without settings (no context)', () => {
-    expect(getProviderForModel('my-custom-model')).toBe('claude');
-  });
-
-  it('can resolve blank-tab routing within enabled providers only', () => {
-    const settings = {
-      settingsProvider: 'claude',
-      providerConfigs: {
-        claude: {
-          environmentVariables: `ANTHROPIC_MODEL=${DEFAULT_CODEX_PRIMARY_MODEL}`,
-        },
-        codex: {
-          enabled: false,
-        },
-      },
-    };
-
-    expect(getProviderForModel(DEFAULT_CODEX_PRIMARY_MODEL, settings)).toBe('codex');
-    expect(getEnabledProviderForModel(DEFAULT_CODEX_PRIMARY_MODEL, settings)).toBe('claude');
+    expect(getEnabledProviderForModel('mimo-v2.5', settings)).toBe('mimo');
   });
 });
