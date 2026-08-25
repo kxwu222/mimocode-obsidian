@@ -275,7 +275,7 @@
     },
     "enableBangBash": {
       "name": "Habilitar modo bash (!)",
-      "desc": "Escribe ! en una entrada vacía para entrar en modo bash. Ejecuta comandos directamente mediante Node.js child_process. Requiere volver a abrir la vista.",
+      "desc": "Escribe ! en una entrada vacía para entrar en modo bash. Ejecuta comandos en este equipo. Requiere volver a abrir la vista.",
       "validation": {
         "noNode": "Node.js no se encontró en PATH. Instala Node.js o revisa tu configuración de PATH."
       }

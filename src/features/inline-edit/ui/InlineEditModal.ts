@@ -22,10 +22,10 @@ import {
   resolveExternalMentionAtIndex,
 } from '../../../utils/contextMentionResolver';
 import { type CursorContext, getEditorView } from '../../../utils/editor';
-import { buildExternalContextDisplayEntries } from '../../../utils/externalContext';
-import { externalContextScanner } from '../../../utils/externalContextScanner';
+import { buildExternalContextDisplayEntries } from '../../../utils/externalContextDisplay';
+import { scanExternalPaths } from '../../../utils/externalPathScanner';
 import { normalizeInsertionText } from '../../../utils/inlineEdit';
-import { getVaultPath, normalizePathForVault as normalizePathForVaultUtil } from '../../../utils/path';
+import { getVaultPath, normalizePathForVault as normalizePathForVaultUtil } from '../../../utils/vaultPath';
 import { renderInlineEditMarkdownPreview } from './inlineEditMarkdownPreview';
 
 export type InlineEditContext =
@@ -865,7 +865,7 @@ class InlineEditController {
     const externalEntries = buildExternalContextDisplayEntries(this.getExternalContexts())
       .sort((a, b) => b.displayNameLower.length - a.displayNameLower.length);
     const getExternalLookup = createExternalContextLookupGetter(
-      contextRoot => externalContextScanner.scanPaths([contextRoot])
+      contextRoot => scanExternalPaths([contextRoot])
     );
 
     for (let index = 0; index < message.length; index++) {

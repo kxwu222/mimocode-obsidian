@@ -6,13 +6,10 @@ import {
   type MentionDropdownCallbacks,
   MentionDropdownController,
 } from '@/shared/mention/MentionDropdownController';
+import type { ExternalContextFile } from '@/utils/externalContextScanner';
+import { setExternalPathScanner } from '@/utils/externalPathScanner';
 
-// Mock externalContextScanner
-jest.mock('@/utils/externalContextScanner', () => ({
-  externalContextScanner: {
-    scanPaths: jest.fn().mockReturnValue([]),
-  },
-}));
+const mockScanPaths = jest.fn<ExternalContextFile[], [string[]]>(() => []);
 
 // Mock extractMcpMentions
 jest.mock('@/utils/mcp', () => ({
@@ -110,9 +107,9 @@ describe('MentionDropdownController', () => {
     mockDropdownVisible = false;
     const { SelectableDropdown } = jest.requireMock('@/shared/components/SelectableDropdown');
     (SelectableDropdown as jest.Mock).mockClear();
-    const { externalContextScanner } = jest.requireMock('@/utils/externalContextScanner');
-    (externalContextScanner.scanPaths as jest.Mock).mockReset();
-    (externalContextScanner.scanPaths as jest.Mock).mockReturnValue([]);
+    mockScanPaths.mockReset();
+    mockScanPaths.mockReturnValue([]);
+    setExternalPathScanner(mockScanPaths);
     containerEl = createMockEl();
     inputEl = createMockInput();
     callbacks = createMockCallbacks();
@@ -378,8 +375,7 @@ describe('MentionDropdownController', () => {
     });
 
     it('hides external context dropdown after completed spaced mention stops matching', () => {
-      const { externalContextScanner } = jest.requireMock('@/utils/externalContextScanner');
-      (externalContextScanner.scanPaths as jest.Mock).mockReturnValue([
+      mockScanPaths.mockReturnValue([
         {
           path: '/tmp/external/test file.md',
           name: 'test file.md',
@@ -735,8 +731,7 @@ describe('MentionDropdownController', () => {
     });
 
     it('still shows vault folder matches when slash search overlaps external context', () => {
-      const { externalContextScanner } = jest.requireMock('@/utils/externalContextScanner');
-      (externalContextScanner.scanPaths as jest.Mock).mockReturnValue([]);
+      mockScanPaths.mockReturnValue([]);
 
       const localCallbacks = createMockCallbacks({
         getExternalContexts: jest.fn().mockReturnValue(['/external/src']),

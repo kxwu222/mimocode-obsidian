@@ -275,7 +275,7 @@
     },
     "enableBangBash": {
       "name": "Bash-Modus (!) aktivieren",
-      "desc": "Gib ! in ein leeres Eingabefeld ein, um den Bash-Modus zu starten. Führt Befehle direkt über Node.js child_process aus. Die Ansicht muss neu geöffnet werden.",
+      "desc": "Gib ! in ein leeres Eingabefeld ein, um den Bash-Modus zu starten. Führt Befehle direkt auf diesem Computer aus. Die Ansicht muss neu geöffnet werden.",
       "validation": {
         "noNode": "Node.js wurde auf PATH nicht gefunden. Installiere Node.js oder prüfe deine PATH-Konfiguration."
       }

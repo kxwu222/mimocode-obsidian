@@ -1,5 +1,4 @@
 import type ClaudianPlugin from '../../main';
-import { HomeFileAdapter } from '../storage/HomeFileAdapter';
 import type { ProviderCommandCatalog } from './commands/ProviderCommandCatalog';
 import type {
   AgentMentionProvider,
@@ -42,14 +41,12 @@ export class ProviderWorkspaceRegistry {
     const providerIds = Object.keys(this.registrations);
     const storage = plugin.storage;
     const vaultAdapter = storage.getAdapter();
-    const homeAdapter = new HomeFileAdapter();
 
     for (const providerId of providerIds) {
       this.services[providerId] = await this.getWorkspaceRegistration(providerId).initialize({
         plugin,
         storage,
         vaultAdapter,
-        homeAdapter,
       });
     }
   }

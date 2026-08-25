@@ -275,7 +275,7 @@
     },
     "enableBangBash": {
       "name": "Activer le mode bash (!)",
-      "desc": "Saisissez ! dans un champ vide pour passer en mode bash. Exécute les commandes directement via le child_process de Node.js. Nécessite de rouvrir la vue.",
+      "desc": "Saisissez ! dans un champ vide pour passer en mode bash. Exécute les commandes sur cet ordinateur. Nécessite de rouvrir la vue.",
       "validation": {
         "noNode": "Node.js introuvable dans PATH. Installez Node.js ou vérifiez votre configuration PATH."
       }

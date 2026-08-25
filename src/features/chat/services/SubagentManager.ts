@@ -1,7 +1,3 @@
-import { existsSync, readFileSync, realpathSync } from 'fs';
-import { tmpdir } from 'os';
-import { isAbsolute, sep } from 'path';
-
 import { ProviderRegistry } from '../../../core/providers/ProviderRegistry';
 import type { ProviderTaskResultInterpreter } from '../../../core/providers/types';
 import { TOOL_TASK } from '../../../core/tools/toolNames';
@@ -60,9 +56,6 @@ function parseJsonValue(value: string): unknown {
 }
 
 export class SubagentManager {
-  private static readonly TRUSTED_OUTPUT_EXT = '.output';
-  private static readonly TRUSTED_TMP_ROOTS = SubagentManager.resolveTrustedTmpRoots();
-
   private syncSubagents: Map<string, SubagentState> = new Map();
   private pendingTasks: Map<string, PendingToolCall> = new Map();
   private _spawnedThisStream = 0;
@@ -1048,60 +1041,12 @@ export class SubagentManager {
     return outputPath.length > 0 ? outputPath : null;
   }
 
-  private readFullOutputFile(fullOutputPath: string): string | null {
-    try {
-      if (!this.isTrustedOutputPath(fullOutputPath)) {
-        return null;
-      }
-
-      if (!existsSync(fullOutputPath)) {
-        return null;
-      }
-
-      const fileContent = readFileSync(fullOutputPath, 'utf-8');
-      const trimmed = fileContent.trim();
-      return trimmed.length > 0 ? trimmed : null;
-    } catch {
-      return null;
-    }
+  private readFullOutputFile(_fullOutputPath: string): string | null {
+    return null;
   }
 
   private extractAgentIdFromInput(input: Record<string, unknown>): string | null {
     const agentId = (input.task_id as string) || (input.agentId as string) || (input.agent_id as string);
     return agentId || null;
-  }
-
-  private static resolveTrustedTmpRoots(): string[] {
-    const roots = new Set<string>();
-    const candidates = [tmpdir(), '/tmp', '/private/tmp'];
-    for (const candidate of candidates) {
-      try {
-        roots.add(realpathSync(candidate));
-      } catch {
-        // Ignore unavailable temp roots.
-      }
-    }
-    return Array.from(roots);
-  }
-
-  private isTrustedOutputPath(fullOutputPath: string): boolean {
-    if (!isAbsolute(fullOutputPath)) {
-      return false;
-    }
-
-    if (!fullOutputPath.toLowerCase().endsWith(SubagentManager.TRUSTED_OUTPUT_EXT)) {
-      return false;
-    }
-
-    let resolvedPath: string;
-    try {
-      resolvedPath = realpathSync(fullOutputPath);
-    } catch {
-      return false;
-    }
-
-    return SubagentManager.TRUSTED_TMP_ROOTS.some((root) =>
-      resolvedPath === root || resolvedPath.startsWith(`${root}${sep}`)
-    );
   }
 }

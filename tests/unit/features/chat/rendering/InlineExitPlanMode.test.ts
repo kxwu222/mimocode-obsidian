@@ -1,7 +1,4 @@
 import { createMockEl } from '@test/helpers/mockElement';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
 
 import { InlineExitPlanMode } from '@/features/chat/rendering/InlineExitPlanMode';
 
@@ -32,12 +29,6 @@ function findItems(root: any): any[] {
 
 describe('InlineExitPlanMode', () => {
   it('resolves with approve-new-session and includes plan content when readable', () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claudian-'));
-    const plansDir = path.join(tmpDir, '.claude', 'plans');
-    fs.mkdirSync(plansDir, { recursive: true });
-    const planFilePath = path.join(plansDir, 'plan.md');
-    fs.writeFileSync(planFilePath, 'Step 1\nStep 2\n', 'utf8');
-
     const container = createMockEl();
     const resolve = jest.fn();
     const renderContent = jest.fn().mockResolvedValue(undefined);
@@ -45,7 +36,7 @@ describe('InlineExitPlanMode', () => {
     const widget = new InlineExitPlanMode(
       container,
       {
-        planFilePath,
+        plan: 'Step 1\nStep 2\n',
         allowedPrompts: [{ tool: 'Bash', prompt: 'Run bash commands' }],
       },
       resolve,

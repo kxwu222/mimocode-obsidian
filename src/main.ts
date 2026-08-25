@@ -39,7 +39,7 @@ import { OPENCODE_PLAN_MODE_ID, OPENCODE_SAFE_MODE_ID } from './providers/openco
 import { extractUserDisplayContent } from './utils/context';
 import { buildCursorContext } from './utils/editor';
 import { revealWorkspaceLeaf } from './utils/obsidianCompat';
-import { getVaultPath } from './utils/path';
+import { getVaultPath } from './utils/vaultPath';
 
 function isClaudianView(value: unknown): value is ClaudianView {
   return !!value

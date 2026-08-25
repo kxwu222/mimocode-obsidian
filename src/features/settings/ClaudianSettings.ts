@@ -12,7 +12,7 @@ import type { ChatViewPlacement } from '../../core/types/settings';
 import { getAvailableLocales, getLocaleDisplayName, setLocale, t } from '../../i18n/i18n';
 import type { Locale, TranslationKey } from '../../i18n/types';
 import type ClaudianPlugin from '../../main';
-import { formatContextLimit, parseContextLimit, parseEnvironmentVariables } from '../../utils/env';
+import { formatContextLimit, parseContextLimit, parseEnvironmentVariables } from '../../utils/envParse';
 import { buildNavMappingText, parseNavMappings } from './keyboardNavigation';
 
 type SettingsTabId = string;

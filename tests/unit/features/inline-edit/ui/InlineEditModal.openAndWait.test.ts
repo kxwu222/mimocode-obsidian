@@ -7,6 +7,7 @@ import { ProviderRegistry } from '@/core/providers/ProviderRegistry';
 import { type InlineEditContext, InlineEditModal } from '@/features/inline-edit/ui/InlineEditModal';
 import { VaultFolderCache } from '@/shared/mention/VaultMentionCache';
 import * as editorUtils from '@/utils/editor';
+import { setExternalPathScanner } from '@/utils/externalPathScanner';
 
 const mentionDropdownCtor = jest.fn();
 jest.mock('@/shared/mention/MentionDropdownController', () => ({
@@ -27,12 +28,6 @@ jest.mock('@/shared/components/SlashCommandDropdown', () => ({
   })),
 }));
 
-jest.mock('@/utils/externalContextScanner', () => ({
-  externalContextScanner: {
-    scanPaths: jest.fn().mockReturnValue([]),
-  },
-}));
-
 function createDeferred(): { promise: Promise<void>; resolve: () => void } {
   let resolve!: () => void;
   const promise = new Promise<void>((promiseResolve) => {
@@ -44,6 +39,7 @@ function createDeferred(): { promise: Promise<void>; resolve: () => void } {
 describe('InlineEditModal - openAndWait', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    setExternalPathScanner(() => []);
   });
 
   it('uses editorCallback references first and falls back to view.editor before rejecting', async () => {
@@ -460,8 +456,7 @@ describe('InlineEditModal - openAndWait', () => {
         .spyOn(editorUtils, 'getEditorView')
         .mockReturnValue(editorView);
 
-      const { externalContextScanner } = jest.requireMock('@/utils/externalContextScanner');
-      (externalContextScanner.scanPaths as jest.Mock).mockImplementation((paths: string[]) => {
+      setExternalPathScanner((paths: string[]) => {
         if (paths[0] === '/external') {
           return [
             {
@@ -718,8 +713,7 @@ describe('InlineEditModal - openAndWait', () => {
         },
       };
 
-      const { externalContextScanner } = jest.requireMock('@/utils/externalContextScanner');
-      (externalContextScanner.scanPaths as jest.Mock).mockImplementation((paths: string[]) => {
+      setExternalPathScanner((paths: string[]) => {
         if (paths[0] === '/external') {
           return [
             {
@@ -954,8 +948,7 @@ describe('InlineEditModal - openAndWait', () => {
         },
       };
 
-      const { externalContextScanner } = jest.requireMock('@/utils/externalContextScanner');
-      (externalContextScanner.scanPaths as jest.Mock).mockImplementation((paths: string[]) => {
+      setExternalPathScanner((paths: string[]) => {
         if (paths[0] === '/external') {
           return [
             {

@@ -21,22 +21,6 @@ import {
   type HiddenProviderCommands,
   type ProviderConfigMap,
 } from '../../core/types/settings';
-import {
-  getClaudeProviderSettings,
-  updateClaudeProviderSettings,
-} from '../../providers/claude/settings';
-import {
-  getCodexProviderSettings,
-  updateCodexProviderSettings,
-} from '../../providers/codex/settings';
-import {
-  getOpencodeProviderSettings,
-  updateOpencodeProviderSettings,
-} from '../../providers/opencode/settings';
-import {
-  getPiProviderSettings,
-  updatePiProviderSettings,
-} from '../../providers/pi/settings';
 import { DEFAULT_CLAUDIAN_SETTINGS } from './defaultSettings';
 
 export {
@@ -130,42 +114,6 @@ function normalizeProviderConfigs(value: unknown): ProviderConfigMap {
     }
   }
   return result;
-}
-
-const HOST_SCOPED_PROVIDER_CONFIG_FIELDS: Record<string, string[]> = {
-  claude: ['cliPathsByHost'],
-  codex: ['cliPathsByHost', 'installationMethodsByHost', 'wslDistroOverridesByHost'],
-  opencode: ['cliPathsByHost'],
-  pi: ['cliPathsByHost'],
-};
-
-function hasHostScopedProviderConfigNormalization(
-  original: ProviderConfigMap,
-  normalized: unknown,
-): boolean {
-  if (!normalized || typeof normalized !== 'object' || Array.isArray(normalized)) {
-    return false;
-  }
-
-  const normalizedConfigs = normalized as ProviderConfigMap;
-  for (const [providerId, fields] of Object.entries(HOST_SCOPED_PROVIDER_CONFIG_FIELDS)) {
-    const originalConfig = original[providerId];
-    const normalizedConfig = normalizedConfigs[providerId];
-    if (!originalConfig || !normalizedConfig) {
-      continue;
-    }
-
-    for (const field of fields) {
-      if (
-        field in originalConfig
-        && JSON.stringify(originalConfig[field]) !== JSON.stringify(normalizedConfig[field])
-      ) {
-        return true;
-      }
-    }
-  }
-
-  return false;
 }
 
 function isEnvironmentScope(value: unknown): value is EnvironmentScope {
@@ -317,27 +265,6 @@ export class ClaudianSettingsStorage {
       ...legacyNormalized,
     };
 
-    updateClaudeProviderSettings(
-      merged,
-      getClaudeProviderSettings(legacyProviderSettings),
-    );
-    updateCodexProviderSettings(
-      merged,
-      getCodexProviderSettings(legacyProviderSettings),
-    );
-    updateOpencodeProviderSettings(
-      merged,
-      getOpencodeProviderSettings(legacyProviderSettings),
-    );
-    updatePiProviderSettings(
-      merged,
-      getPiProviderSettings(legacyProviderSettings),
-    );
-    const didNormalizeHostScopedProviderConfigs = hasHostScopedProviderConfigNormalization(
-      providerConfigs,
-      merged.providerConfigs,
-    );
-
     if (
       settingsPath !== CLAUDIAN_SETTINGS_PATH
       || (
@@ -356,7 +283,6 @@ export class ClaudianSettingsStorage {
         'customModelAliases' in stored
         && JSON.stringify(customModelAliases) !== JSON.stringify(stored.customModelAliases ?? {})
       )
-      || didNormalizeHostScopedProviderConfigs
       )
     ) {
       await this.save(merged);
@@ -394,21 +320,11 @@ export class ClaudianSettingsStorage {
       return;
     }
 
-    const current = await this.load();
-    updateClaudeProviderSettings(
-      current,
-      { lastModel: model },
-    );
-    await this.save(current);
+    await this.update({ model });
   }
 
-  async setLastEnvHash(hash: string): Promise<void> {
-    const current = await this.load();
-    updateClaudeProviderSettings(
-      current,
-      { environmentHash: hash },
-    );
-    await this.save(current);
+  async setLastEnvHash(_hash: string): Promise<void> {
+    // Unused CLI providers stored an env hash here; MiMo does not.
   }
 
   private getDefaults(): StoredClaudianSettings {

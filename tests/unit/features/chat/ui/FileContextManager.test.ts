@@ -5,6 +5,7 @@ import type { FileContextCallbacks } from '@/features/chat/ui/FileContext';
 import { FileContextManager } from '@/features/chat/ui/FileContext';
 import { VaultFolderCache } from '@/shared/mention/VaultMentionCache';
 import type { ExternalContextFile } from '@/utils/externalContextScanner';
+import { setExternalPathScanner } from '@/utils/externalPathScanner';
 
 jest.mock('obsidian', () => {
   const actual = jest.requireActual('obsidian');
@@ -22,25 +23,15 @@ function createMockTFile(filePath: string): TFile {
 }
 
 let mockVaultPath = '/vault';
-jest.mock('@/utils/path', () => {
-  const actual = jest.requireActual('@/utils/path');
+jest.mock('@/utils/vaultPath', () => {
+  const actual = jest.requireActual('@/utils/vaultPath');
   return {
     ...actual,
     getVaultPath: jest.fn(() => mockVaultPath),
-    isPathWithinVault: jest.fn((candidatePath: string, vaultPath: string) => {
-      if (!candidatePath) return false;
-      if (!candidatePath.startsWith('/')) return true;
-      return candidatePath.startsWith(vaultPath);
-    }),
   };
 });
 
 const mockScanPaths = jest.fn<ExternalContextFile[], [string[]]>(() => []);
-jest.mock('@/utils/externalContextScanner', () => ({
-  externalContextScanner: {
-    scanPaths: (paths: string[]) => mockScanPaths(paths),
-  },
-}));
 
 
 function findByClass(root: MockElement, className: string): MockElement | undefined {
@@ -118,6 +109,7 @@ describe('FileContextManager', () => {
     jest.clearAllMocks();
     mockVaultPath = '/vault';
     mockScanPaths.mockReturnValue([]);
+    setExternalPathScanner(mockScanPaths);
     containerEl = createMockEl();
     inputEl = {
       value: '',

@@ -1,5 +1,4 @@
 import { Notice, setIcon } from 'obsidian';
-import * as os from 'os';
 import * as path from 'path';
 
 import type { McpServerManager } from '../../../core/mcp/McpServerManager';
@@ -17,8 +16,33 @@ import type {
   UsageInfo,
 } from '../../../core/types';
 import { appendCheckIcon, appendMcpIcon, createProviderIconSvg } from '../../../shared/icons';
-import { filterValidPaths, findConflictingPath, isDuplicatePath, isValidDirectoryPath, validateDirectoryPath } from '../../../utils/externalContext';
-import { expandHomePath, normalizePathForFilesystem } from '../../../utils/path';
+
+function normalizePathKey(value: string): string {
+  const key = value.replace(/\\/g, '/').replace(/\/+$/, '');
+  return process.platform === 'win32' ? key.toLowerCase() : key;
+}
+
+function isDuplicatePath(newPath: string, existingPaths: string[]): boolean {
+  const normalizedNew = normalizePathKey(newPath);
+  return existingPaths.some((existing) => normalizePathKey(existing) === normalizedNew);
+}
+
+function findConflictingPath(
+  newPath: string,
+  existingPaths: string[],
+): { path: string; type: 'parent' | 'child' } | null {
+  const normalizedNew = normalizePathKey(newPath);
+  for (const existing of existingPaths) {
+    const normalizedExisting = normalizePathKey(existing);
+    if (normalizedNew.startsWith(`${normalizedExisting}/`)) {
+      return { path: existing, type: 'parent' };
+    }
+    if (normalizedExisting.startsWith(`${normalizedNew}/`)) {
+      return { path: existing, type: 'child' };
+    }
+  }
+  return null;
+}
 
 interface ElectronOpenDialogResult {
   canceled: boolean;
@@ -611,33 +635,16 @@ export class ExternalContextSelector {
   }
 
   setPersistentPaths(paths: string[]): void {
-    // Validate paths - remove non-existent directories
-    const validPaths = filterValidPaths(paths);
-    const invalidPaths = paths.filter(p => !validPaths.includes(p));
-
-    this.persistentPaths = new Set(validPaths);
-    // Merge persistent paths into external context paths
+    this.persistentPaths = new Set(paths);
     this.mergePersistentPaths();
     this.updateDisplay();
     this.renderDropdown();
-
-    // If invalid paths were removed, notify user and save updated list
-    if (invalidPaths.length > 0) {
-      const pathNames = invalidPaths.map(p => this.shortenPath(p)).join(', ');
-      new Notice(`Removed ${invalidPaths.length} invalid external context path(s): ${pathNames}`, 5000);
-      this.onPersistenceChangeCallback?.([...this.persistentPaths]);
-    }
   }
 
   togglePersistence(path: string): void {
     if (this.persistentPaths.has(path)) {
       this.persistentPaths.delete(path);
     } else {
-      // Validate path still exists before persisting
-      if (!isValidDirectoryPath(path)) {
-        new Notice(`Cannot persist "${this.shortenPath(path)}" - directory no longer exists`, 4000);
-        return;
-      }
       this.persistentPaths.add(path);
     }
     this.onPersistenceChangeCallback?.([...this.persistentPaths]);
@@ -698,18 +705,10 @@ export class ExternalContextSelector {
       cleanPath = cleanPath.slice(1, -1);
     }
 
-    // Expand home directory and normalize path
-    const expandedPath = expandHomePath(cleanPath);
-    const normalizedPath = normalizePathForFilesystem(expandedPath);
+    const normalizedPath = cleanPath.replace(/\\/g, '/');
 
-    if (!path.isAbsolute(normalizedPath)) {
+    if (!path.isAbsolute(normalizedPath) && !/^[A-Za-z]:\//.test(normalizedPath)) {
       return { success: false, error: 'Path must be absolute. Usage: /add-dir /absolute/path' };
-    }
-
-    // Validate path exists and is a directory with specific error messages
-    const validation = validateDirectoryPath(normalizedPath);
-    if (!validation.valid) {
-      return { success: false, error: `${validation.error}: ${pathInput}` };
     }
 
     // Check for duplicate (normalized comparison for cross-platform support)
@@ -740,9 +739,7 @@ export class ExternalContextSelector {
   clearExternalContexts(persistentPathsFromSettings?: string[]): void {
     // Use settings value if provided (most up-to-date), otherwise use local cache
     if (persistentPathsFromSettings) {
-      // Validate paths - silently filter during session initialization (not user action)
-      const validPaths = filterValidPaths(persistentPathsFromSettings);
-      this.persistentPaths = new Set(validPaths);
+      this.persistentPaths = new Set(persistentPathsFromSettings);
     }
     this.externalContextPaths = [...this.persistentPaths];
     this.updateDisplay();
@@ -868,28 +865,14 @@ export class ExternalContextSelector {
     }
   }
 
-  /** Shorten path for display (replace home dir with ~) */
+  /** Shorten path for display using the last two segments. */
   private shortenPath(fullPath: string): string {
-    try {
-      const homeDir = os.homedir();
-      const normalize = (value: string) => value.replace(/\\/g, '/');
-      const normalizedFull = normalize(fullPath);
-      const normalizedHome = normalize(homeDir);
-      const compareFull = process.platform === 'win32'
-        ? normalizedFull.toLowerCase()
-        : normalizedFull;
-      const compareHome = process.platform === 'win32'
-        ? normalizedHome.toLowerCase()
-        : normalizedHome;
-      if (compareFull.startsWith(compareHome)) {
-        // Use normalized path length and normalize the result for consistent display
-        const remainder = normalizedFull.slice(normalizedHome.length);
-        return '~' + remainder;
-      }
-    } catch {
-      // Fall through to return full path
+    const normalized = fullPath.replace(/\\/g, '/').replace(/\/+$/, '');
+    const segments = normalized.split('/').filter(Boolean);
+    if (segments.length <= 2) {
+      return fullPath;
     }
-    return fullPath;
+    return `…/${segments.slice(-2).join('/')}`;
   }
 
   updateDisplay() {

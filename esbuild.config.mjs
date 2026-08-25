@@ -158,10 +158,37 @@ const copyToObsidian = {
   }
 };
 
+const forbidHostApisInBundle = {
+  name: 'forbid-host-apis-in-bundle',
+  setup(build) {
+    if (!prod) return;
+    build.onEnd(async (result) => {
+      if (result.errors.length > 0 || !existsSync('main.js')) return;
+      const contents = await fsPromises.readFile(path.join(process.cwd(), 'main.js'), 'utf8');
+      const forbidden = [
+        /require\(["'](?:node:)?fs["']\)/,
+        /require\(["'](?:node:)?child_process["']\)/,
+        /require\(["'](?:node:)?os["']\)/,
+        /\bos\.hostname\b/,
+        /\bos\.userInfo\b/,
+        /\bos\.networkInterfaces\b/,
+        /\bos\.homedir\b/,
+      ];
+      const hits = forbidden.filter((pattern) => pattern.test(contents));
+      if (hits.length > 0) {
+        throw new Error(
+          'main.js still contains Node host APIs blocked by community plugin review: '
+          + hits.map((pattern) => pattern.source).join(', '),
+        );
+      }
+    });
+  },
+};
+
 const context = await esbuild.context({
   entryPoints: ['src/main.ts'],
   bundle: true,
-  plugins: [patchSdkImportMeta, patchRendererUnsafeUnref, copyToObsidian],
+  plugins: [patchSdkImportMeta, patchRendererUnsafeUnref, forbidHostApisInBundle, copyToObsidian],
   external: [
     'obsidian',
     'electron',

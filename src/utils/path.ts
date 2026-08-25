@@ -1,12 +1,8 @@
 import * as fs from 'fs';
-import type { App } from 'obsidian';
 import * as os from 'os';
 import * as path from 'path';
 
-export function getVaultPath(app: App): string | null {
-  const basePath = (app.vault.adapter as { basePath?: unknown } | undefined)?.basePath;
-  return typeof basePath === 'string' ? basePath : null;
-}
+export { getVaultPath } from './vaultPath';
 
 function getEnvValue(key: string): string | undefined {
   const hasKey = (name: string): boolean => name in process.env && process.env[name] !== undefined;

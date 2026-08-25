@@ -5,7 +5,7 @@ import type {
   ProviderWorkspaceRegistration,
   ProviderWorkspaceServices,
 } from '../../../core/providers/types';
-import type { HomeFileAdapter } from '../../../core/storage/HomeFileAdapter';
+import { HomeFileAdapter } from '../../../core/storage/HomeFileAdapter';
 import type { VaultFileAdapter } from '../../../core/storage/VaultFileAdapter';
 import type ClaudianPlugin from '../../../main';
 import { getVaultPath } from '../../../utils/path';
@@ -63,7 +63,7 @@ export const codexWorkspaceRegistration: ProviderWorkspaceRegistration<CodexWork
   initialize: async ({ plugin, vaultAdapter, homeAdapter }) => createCodexWorkspaceServices(
     plugin,
     vaultAdapter,
-    homeAdapter,
+    homeAdapter ?? new HomeFileAdapter(),
   ),
 };
 

@@ -384,7 +384,7 @@ export interface ProviderWorkspaceInitContext {
   plugin: ClaudianPlugin;
   storage: SharedAppStorage;
   vaultAdapter: VaultFileAdapter;
-  homeAdapter: HomeFileAdapter;
+  homeAdapter?: HomeFileAdapter;
 }
 
 export interface ProviderWorkspaceRegistration<

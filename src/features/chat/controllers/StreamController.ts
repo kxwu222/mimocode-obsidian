@@ -33,7 +33,7 @@ import {
 import { formatDurationMmSs } from '../../../utils/date';
 import { extractDiffData } from '../../../utils/diff';
 import { hasStreamingMathDelimiters } from '../../../utils/markdownMath';
-import { getVaultPath, normalizePathForVault } from '../../../utils/path';
+import { getVaultPath, normalizePathForVault } from '../../../utils/vaultPath';
 import { THINKING_STATUS_TEXT } from '../constants';
 import type { MessageRenderer, RenderContentOptions } from '../rendering/MessageRenderer';
 import { resolveSubagentLifecycleAdapter } from '../rendering/subagentLifecycleResolution';

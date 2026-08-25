@@ -10,7 +10,7 @@ import type { EnvironmentScope, EnvSnippet } from '../../../core/types';
 import { t } from '../../../i18n/i18n';
 import type ClaudianPlugin from '../../../main';
 import { confirmDelete } from '../../../shared/modals/ConfirmModal';
-import { formatContextLimit, parseContextLimit, parseEnvironmentVariables } from '../../../utils/env';
+import { formatContextLimit, parseContextLimit, parseEnvironmentVariables } from '../../../utils/envParse';
 import type { ClaudianView } from '../../chat/ClaudianView';
 
 export class EnvSnippetModal extends Modal {

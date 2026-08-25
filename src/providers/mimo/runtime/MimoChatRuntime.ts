@@ -18,7 +18,7 @@ import type {
   SessionUpdateResult,
   SubagentRuntimeState,
 } from '../../../core/runtime/types';
-import type { ChatMessage, Conversation, McpServerConfig, SlashCommand, StreamChunk } from '../../../core/types';
+import type { ChatMessage, Conversation, SlashCommand, StreamChunk } from '../../../core/types';
 import type ClaudianPlugin from '../../../main';
 import { appendBrowserContext } from '../../../utils/browser';
 import { appendCanvasContext } from '../../../utils/canvas';
@@ -28,27 +28,14 @@ import { MIMO_PROVIDER_CAPABILITIES } from '../capabilities';
 import { getMimoBaseUrl, getMimoProviderSettings, isMimoModel } from '../settings';
 import {
   buildMimoMessages,
-  type MimoAssistantMessage,
   type MimoMessage,
-  type MimoToolCall,
-  type MimoToolResultMessage,
 } from './buildMimoMessages';
-import type { OpenAIToolDef } from './McpToolRunner';
-import { McpToolRunner } from './McpToolRunner';
 import { applyVaultNoteSnippets, loadVaultNoteSnippets } from './vaultNoteContext';
 
 const MIMO_SYSTEM_PROMPT =
   'You are MiMo, an AI assistant developed by Xiaomi, working inside the user\'s Obsidian vault. '
   + 'When a message includes <linked_note> or <attached_note> blocks, those blocks contain the full note text. '
   + 'Use that text directly. You cannot read or write other vault files unless the user pastes them.';
-
-/** Accumulated tool call data from an OpenAI streaming response. */
-interface AccumulatedToolCall {
-  index: number;
-  id: string;
-  name: string;
-  arguments: string;
-}
 
 export class MimoChatRuntime implements ChatRuntime {
   readonly providerId = 'mimo' as const;
@@ -125,7 +112,6 @@ export class MimoChatRuntime implements ChatRuntime {
     const rawModel = typeof settings.model === 'string' ? settings.model.trim() : '';
     const selectedModel = rawModel && isMimoModel(rawModel) ? rawModel : mimoSettings.model;
     const baseUrl = getMimoBaseUrl(mimoSettings);
-    const runner = new McpToolRunner();
 
     try {
       yield* this._runAgentLoop(
@@ -133,13 +119,9 @@ export class MimoChatRuntime implements ChatRuntime {
         mimoSettings.apiKey,
         selectedModel,
         messages,
-        [],
-        {},
-        runner,
         signal,
       );
     } finally {
-      await runner.close();
       this.abortController = null;
     }
   }
@@ -189,226 +171,135 @@ export class MimoChatRuntime implements ChatRuntime {
     }
   }
 
-  /** The core agent loop: stream → accumulate tool calls → execute → repeat. */
+  /** Stream one HTTP completion. Tool calls are not executed — this is API-key chat, not an agent. */
   private async *_runAgentLoop(
     baseUrl: string,
     apiKey: string,
     model: string,
     messages: MimoMessage[],
-    toolDefs: OpenAIToolDef[],
-    serverConfigs: Record<string, McpServerConfig>,
-    runner: McpToolRunner,
     signal: AbortSignal,
   ): AsyncGenerator<StreamChunk> {
     let inputTokens = 0;
     let outputTokens = 0;
-    const MAX_TOOL_LOOPS = 20;
-    let loopCount = 0;
 
-    while (loopCount < MAX_TOOL_LOOPS) {
-      loopCount++;
+    const body: Record<string, unknown> = {
+      model,
+      messages,
+      stream: true,
+      max_completion_tokens: 32768,
+    };
 
-      const body: Record<string, unknown> = {
-        model,
-        messages,
-        stream: true,
-        max_completion_tokens: 32768,
-      };
-      if (toolDefs.length > 0) {
-        body.tools = toolDefs;
-        body.tool_choice = 'auto';
-      }
-
-      let response: Response;
-      try {
-        // requestUrl does not support streaming responses; fetch is required for SSE
-        response = await fetch(`${baseUrl}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'api-key': apiKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-          signal,
-        });
-      } catch (error) {
-        if (signal.aborted) {
-          yield { type: 'done' };
-          return;
-        }
-        const message = error instanceof Error ? error.message : 'Network error';
-        yield { type: 'error', content: `MiMo request failed: ${message}` };
-        yield { type: 'done' };
-        return;
-      }
-
-      if (!response.ok) {
-        let errBody = '';
-        try {
-          errBody = await response.text();
-        } catch {
-          // ignore
-        }
-        yield {
-          type: 'error',
-          content: `MiMo API error ${response.status}: ${errBody || response.statusText}`,
-        };
-        yield { type: 'done' };
-        return;
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) {
-        yield { type: 'error', content: 'MiMo response body is empty.' };
-        yield { type: 'done' };
-        return;
-      }
-
-      // Accumulated tool calls for this response turn.
-      const pendingToolCalls = new Map<number, AccumulatedToolCall>();
-      let finishReason: string | null = null;
-      // assistant text content accumulated for the history entry
-      let assistantText = '';
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      try {
-        let finished = false;
-        while (!finished) {
-          const { done, value } = await reader.read();
-          if (done || signal.aborted) {
-            break;
-          }
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() ?? '';
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith('data:')) {
-              continue;
-            }
-
-            const data = trimmed.slice(5).trim();
-            if (data === '[DONE]') {
-              finished = true;
-              break;
-            }
-
-            try {
-              const parsed = JSON.parse(data) as {
-                choices?: Array<{
-                  delta?: {
-                    content?: string;
-                    tool_calls?: Array<{
-                      index: number;
-                      id?: string;
-                      type?: string;
-                      function?: { name?: string; arguments?: string };
-                    }>;
-                  };
-                  finish_reason?: string | null;
-                }>;
-                usage?: {
-                  prompt_tokens?: number;
-                  completion_tokens?: number;
-                };
-              };
-
-              const choice = parsed.choices?.[0];
-              if (choice?.delta?.content) {
-                assistantText += choice.delta.content;
-                yield { type: 'text', content: choice.delta.content };
-              }
-
-              // Accumulate streaming tool call chunks (OpenAI sends them in pieces).
-              for (const tc of choice?.delta?.tool_calls ?? []) {
-                let entry = pendingToolCalls.get(tc.index);
-                if (!entry) {
-                  entry = { index: tc.index, id: '', name: '', arguments: '' };
-                  pendingToolCalls.set(tc.index, entry);
-                }
-                if (tc.id) entry.id = tc.id;
-                if (tc.function?.name) entry.name += tc.function.name;
-                if (tc.function?.arguments) entry.arguments += tc.function.arguments;
-              }
-
-              if (choice?.finish_reason) {
-                finishReason = choice.finish_reason;
-                finished = true;
-                break;
-              }
-              if (parsed.usage) {
-                inputTokens = parsed.usage.prompt_tokens ?? 0;
-                outputTokens = parsed.usage.completion_tokens ?? 0;
-              }
-            } catch {
-              // Skip malformed SSE frames.
-            }
-          }
-        }
-      } finally {
-        reader.releaseLock();
-      }
-
+    let response: Response;
+    try {
+      // requestUrl does not support streaming responses; fetch is required for SSE
+      response = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'api-key': apiKey,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal,
+      });
+    } catch (error) {
       if (signal.aborted) {
         yield { type: 'done' };
         return;
       }
+      const message = error instanceof Error ? error.message : 'Network error';
+      yield { type: 'error', content: `MiMo request failed: ${message}` };
+      yield { type: 'done' };
+      return;
+    }
 
-      // If there are no tool calls or we're done, exit the loop.
-      if (finishReason !== 'tool_calls' || pendingToolCalls.size === 0) {
-        break;
+    if (!response.ok) {
+      let errBody = '';
+      try {
+        errBody = await response.text();
+      } catch {
+        // ignore
       }
-
-      // Build the sorted list of completed tool calls.
-      const toolCallList = Array.from(pendingToolCalls.values()).sort(
-        (a, b) => a.index - b.index,
-      );
-
-      // Append the assistant message with tool_calls to message history.
-      const assistantMsg: MimoAssistantMessage = {
-        role: 'assistant',
-        content: assistantText || null,
-        tool_calls: toolCallList.map((tc): MimoToolCall => ({
-          id: tc.id,
-          type: 'function',
-          function: { name: tc.name, arguments: tc.arguments },
-        })),
+      yield {
+        type: 'error',
+        content: `MiMo API error ${response.status}: ${errBody || response.statusText}`,
       };
-      messages.push(assistantMsg);
+      yield { type: 'done' };
+      return;
+    }
 
-      // Execute each tool call and append tool result messages.
-      for (const tc of toolCallList) {
-        let input: Record<string, unknown> = {};
-        try {
-          const parsed: unknown = JSON.parse(tc.arguments || '{}');
-          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-            input = parsed as Record<string, unknown>;
-          }
-        } catch {
-          // Use empty input if arguments are not valid JSON.
+    const reader = response.body?.getReader();
+    if (!reader) {
+      yield { type: 'error', content: 'MiMo response body is empty.' };
+      yield { type: 'done' };
+      return;
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      let finished = false;
+      while (!finished) {
+        const { done, value } = await reader.read();
+        if (done || signal.aborted) {
+          break;
         }
 
-        // Yield tool_use chunk so the UI can show the tool being called.
-        yield { type: 'tool_use', id: tc.id, name: tc.name, input };
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
 
-        const { content, isError } = await runner.callTool(tc.name, serverConfigs, input);
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || !trimmed.startsWith('data:')) {
+            continue;
+          }
 
-        // Yield tool_result chunk so the UI can show the result.
-        yield { type: 'tool_result', id: tc.id, content, isError };
+          const data = trimmed.slice(5).trim();
+          if (data === '[DONE]') {
+            finished = true;
+            break;
+          }
 
-        const toolResultMsg: MimoToolResultMessage = {
-          role: 'tool',
-          tool_call_id: tc.id,
-          content,
-        };
-        messages.push(toolResultMsg);
+          try {
+            const parsed = JSON.parse(data) as {
+              choices?: Array<{
+                delta?: {
+                  content?: string;
+                };
+                finish_reason?: string | null;
+              }>;
+              usage?: {
+                prompt_tokens?: number;
+                completion_tokens?: number;
+              };
+            };
+
+            const choice = parsed.choices?.[0];
+            if (choice?.delta?.content) {
+              yield { type: 'text', content: choice.delta.content };
+            }
+
+            if (choice?.finish_reason) {
+              finished = true;
+              break;
+            }
+            if (parsed.usage) {
+              inputTokens = parsed.usage.prompt_tokens ?? 0;
+              outputTokens = parsed.usage.completion_tokens ?? 0;
+            }
+          } catch {
+            // Skip malformed SSE frames.
+          }
+        }
       }
+    } finally {
+      reader.releaseLock();
+    }
 
-      // Loop back: send the updated conversation with tool results to the model.
+    if (signal.aborted) {
+      yield { type: 'done' };
+      return;
     }
 
     const totalTokens = inputTokens + outputTokens;

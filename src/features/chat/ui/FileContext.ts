@@ -10,9 +10,9 @@ import {
   isMentionStart,
   resolveExternalMentionAtIndex,
 } from '../../../utils/contextMentionResolver';
-import { buildExternalContextDisplayEntries } from '../../../utils/externalContext';
-import { externalContextScanner } from '../../../utils/externalContextScanner';
-import { getVaultPath, normalizePathForVault as normalizePathForVaultUtil } from '../../../utils/path';
+import { buildExternalContextDisplayEntries } from '../../../utils/externalContextDisplay';
+import { scanExternalPaths } from '../../../utils/externalPathScanner';
+import { getVaultPath, normalizePathForVault as normalizePathForVaultUtil } from '../../../utils/vaultPath';
 import { FileContextState } from './file-context/state/FileContextState';
 import { FileChipsView } from './file-context/view/FileChipsView';
 
@@ -239,7 +239,7 @@ export class FileContextManager {
     const contextEntries = buildExternalContextDisplayEntries(externalContexts)
       .sort((a, b) => b.displayNameLower.length - a.displayNameLower.length);
     const getContextLookup = createExternalContextLookupGetter(
-      contextRoot => externalContextScanner.scanPaths([contextRoot])
+      contextRoot => scanExternalPaths([contextRoot])
     );
 
     let replaced = false;

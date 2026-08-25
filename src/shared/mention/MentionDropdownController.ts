@@ -1,8 +1,9 @@
 import type { TFile } from 'obsidian';
 import { setIcon } from 'obsidian';
 
-import { buildExternalContextDisplayEntries } from '../../utils/externalContext';
-import { type ExternalContextFile, externalContextScanner } from '../../utils/externalContextScanner';
+import { buildExternalContextDisplayEntries } from '../../utils/externalContextDisplay';
+import type { ExternalContextFile } from '../../utils/externalContextScanner';
+import { scanExternalPaths } from '../../utils/externalPathScanner';
 import { extractMcpMentions } from '../../utils/mcp';
 import { SelectableDropdown } from '../components/SelectableDropdown';
 import { appendMcpIcon } from '../icons';
@@ -88,7 +89,7 @@ export class MentionDropdownController {
 
     window.setTimeout(() => {
       try {
-        externalContextScanner.scanPaths(externalContexts);
+        scanExternalPaths(externalContexts);
       } catch {
         // Pre-scan is best-effort, ignore failures
       }
@@ -248,7 +249,7 @@ export class MentionDropdownController {
     }
 
     if (this.activeContextFilter && isFilterSearch) {
-      const contextFiles = externalContextScanner.scanPaths([this.activeContextFilter.contextRoot]);
+      const contextFiles = scanExternalPaths([this.activeContextFilter.contextRoot]);
       this.filteredContextFiles = contextFiles
         .filter(file => {
           const relativePath = file.relativePath.replace(/\\/g, '/');

@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import * as nodePath from 'path';
 
 import type { ExitPlanModeDecision } from '../../../core/types/tools';
@@ -138,6 +137,11 @@ export class InlineExitPlanMode {
   }
 
   private readPlanContent(): string | null {
+    const inlinePlan = this.input.plan;
+    if (typeof inlinePlan === 'string' && inlinePlan.trim()) {
+      return inlinePlan.trim();
+    }
+
     const planFilePath = this.input.planFilePath as string | undefined;
     if (!planFilePath) return null;
 
@@ -147,13 +151,8 @@ export class InlineExitPlanMode {
       return null;
     }
 
-    try {
-      const content = fs.readFileSync(planFilePath, 'utf-8');
-      return content.trim() || null;
-    } catch (err) {
-      this.planReadError = err instanceof Error ? err.message : 'unknown error';
-      return null;
-    }
+    this.planReadError = 'plan file is not available in this client';
+    return null;
   }
 
   private extractPlanContent(): string {
