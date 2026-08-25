@@ -17,12 +17,6 @@ An Obsidian plugin that brings [Xiaomi MiMo](https://mimo.mi.com) into your vaul
 
 **Editor context** — The active note’s contents, `@`-mentioned notes, and any editor / canvas / browser selection are sent with the turn so MiMo can see what you are looking at. It does not read or write the rest of the vault on its own.
 
-## Not in this plugin
-
-This is an HTTP chat client, not a vault agent. It does **not** run shell commands, MCP servers, skills, or subagents.
-
-If you want MiMo-Code to read, write, and search the vault with plan/build modes, use [Sidebar MiMo-Code](https://github.com/AllenX95/sidebar-mimocode) (requires the MiMo-Code CLI).
-
 ## Requirements
 
 - Obsidian desktop v1.7.2 or later
