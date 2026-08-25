@@ -174,21 +174,32 @@ export class FileContextManager {
     }
   }
 
-  /** Handles file open event. */
+  /** Handles file open event. Always follows the active file so the chip stays honest. */
   handleFileOpen(file: TFile) {
     const normalizedPath = this.normalizePathForVault(file.path);
     if (!normalizedPath) return;
 
-    if (!this.state.isSessionStarted()) {
+    const sessionStarted = this.state.isSessionStarted();
+    if (!sessionStarted) {
       this.state.clearAttachments();
-      if (!this.hasExcludedTag(file)) {
-        this.currentNotePath = normalizedPath;
-        this.state.attachFile(normalizedPath);
-      } else {
-        this.currentNotePath = null;
-      }
-      this.refreshCurrentNoteChip();
     }
+
+    const previousCurrent = this.currentNotePath;
+    if (this.hasExcludedTag(file)) {
+      if (sessionStarted && previousCurrent) {
+        this.state.detachFile(previousCurrent);
+      }
+      this.currentNotePath = null;
+      this.refreshCurrentNoteChip();
+      return;
+    }
+
+    if (sessionStarted && previousCurrent && previousCurrent !== normalizedPath) {
+      this.state.detachFile(previousCurrent);
+    }
+    this.currentNotePath = normalizedPath;
+    this.state.attachFile(normalizedPath);
+    this.refreshCurrentNoteChip();
   }
 
   markFileCacheDirty() {

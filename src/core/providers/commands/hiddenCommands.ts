@@ -36,7 +36,10 @@ export function normalizeHiddenCommandList(value: unknown): string[] {
 }
 
 export function getDefaultHiddenProviderCommands(): HiddenProviderCommands {
-  return {};
+  return {
+    // HTTP chat has no filesystem agent, so /add-dir would only store unused paths.
+    mimo: ['add-dir'],
+  };
 }
 
 export function normalizeHiddenProviderCommands(

@@ -44,3 +44,7 @@ body.theme-light .claudian-container {
   --claudian-brand: var(--claudian-brand-pi);
   --claudian-brand-rgb: var(--claudian-brand-pi-rgb);
 }
+
+.claudian-container[data-provider="mimo"] {
+  --claudian-brand: var(--interactive-accent);
+}

@@ -34,7 +34,7 @@ import { formatDurationMmSs } from '../../../utils/date';
 import { extractDiffData } from '../../../utils/diff';
 import { hasStreamingMathDelimiters } from '../../../utils/markdownMath';
 import { getVaultPath, normalizePathForVault } from '../../../utils/path';
-import { FLAVOR_TEXTS } from '../constants';
+import { THINKING_STATUS_TEXT } from '../constants';
 import type { MessageRenderer, RenderContentOptions } from '../rendering/MessageRenderer';
 import { resolveSubagentLifecycleAdapter } from '../rendering/subagentLifecycleResolution';
 import {
@@ -1375,7 +1375,7 @@ export class StreamController {
         ? `claudian-thinking ${overrideCls}`
         : 'claudian-thinking';
       state.thinkingEl = state.currentContentEl.createDiv({ cls });
-      const text = overrideText || FLAVOR_TEXTS[Math.floor(Math.random() * FLAVOR_TEXTS.length)];
+      const text = overrideText || THINKING_STATUS_TEXT;
       state.thinkingEl.createSpan({ text });
 
       // Create timer span with initial value

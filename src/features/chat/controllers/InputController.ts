@@ -35,7 +35,7 @@ import { extractUserDisplayContent } from '../../../utils/context';
 import { formatDurationMmSs } from '../../../utils/date';
 import type { EditorSelectionContext } from '../../../utils/editor';
 import { appendMarkdownSnippet } from '../../../utils/markdown';
-import { COMPLETION_FLAVOR_WORDS } from '../constants';
+import { MIN_VISIBLE_RESPONSE_SECONDS } from '../constants';
 import { type InlineAskQuestionConfig, InlineAskUserQuestion } from '../rendering/InlineAskUserQuestion';
 import { InlineExitPlanMode } from '../rendering/InlineExitPlanMode';
 import { InlinePlanApproval,type PlanApprovalDecision } from '../rendering/InlinePlanApproval';
@@ -440,7 +440,7 @@ export class InputController {
       if (!wasInvalidated && state.streamGeneration === streamGeneration) {
         const didCancelThisTurn = wasInterrupted || state.cancelRequested;
         if (didCancelThisTurn && !state.pendingNewSessionPlan) {
-          await streamController.appendText('\n\n<span class="claudian-interrupted">Interrupted</span> <span class="claudian-interrupted-hint">· What should Claudian do instead?</span>');
+          await streamController.appendText('\n\n<span class="claudian-interrupted">Interrupted</span> <span class="claudian-interrupted-hint">· Send a follow-up.</span>');
         }
         streamController.hideThinkingIndicator();
         state.isStreaming = false;
@@ -453,16 +453,13 @@ export class InputController {
           const durationSeconds = state.responseStartTime
             ? Math.floor((performance.now() - state.responseStartTime) / 1000)
             : 0;
-          if (durationSeconds > 0) {
-            const flavorWord =
-              COMPLETION_FLAVOR_WORDS[Math.floor(Math.random() * COMPLETION_FLAVOR_WORDS.length)];
+          if (durationSeconds >= MIN_VISIBLE_RESPONSE_SECONDS) {
             finalAssistantMsg.durationSeconds = durationSeconds;
-            finalAssistantMsg.durationFlavorWord = flavorWord;
             // Add footer to live message in DOM
             if (state.currentContentEl) {
               const footerEl = state.currentContentEl.createDiv({ cls: 'claudian-response-footer' });
               footerEl.createSpan({
-                text: `* ${flavorWord} for ${formatDurationMmSs(durationSeconds)}`,
+                text: formatDurationMmSs(durationSeconds),
                 cls: 'claudian-baked-duration',
               });
             }
@@ -723,6 +720,10 @@ export class InputController {
 
     const currentNotePath = fileContextManager?.getCurrentNotePath() || null;
     const shouldSendCurrentNote = fileContextManager?.shouldSendCurrentNote(currentNotePath) ?? false;
+    const sendNoteEveryTurn = (() => {
+      const runtime = this.getAgentService();
+      return !!runtime && !runtime.getCapabilities().supportsPersistentRuntime;
+    })();
 
     const editorContext = options.editorContextOverride !== undefined
       ? options.editorContextOverride
@@ -741,12 +742,21 @@ export class InputController {
       : options.content;
     const enabledMcpServers = mcpServerSelector?.getEnabledServers();
 
+    const attachedFiles = !isCompact
+      ? fileContextManager?.getAttachedFiles?.()
+      : undefined;
+
     return {
       displayContent: options.content,
       turnRequest: {
         text: transformedText,
         images: options.images,
-        currentNotePath: shouldSendCurrentNote && currentNotePath ? currentNotePath : undefined,
+        currentNotePath: (shouldSendCurrentNote || sendNoteEveryTurn) && currentNotePath
+          ? currentNotePath
+          : undefined,
+        attachedFilePaths: attachedFiles && attachedFiles.size > 0
+          ? Array.from(attachedFiles)
+          : undefined,
         editorSelection: editorContext,
         browserSelection: browserContext,
         canvasSelection: canvasContext,

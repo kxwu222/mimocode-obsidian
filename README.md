@@ -3,23 +3,27 @@
 ![License](https://img.shields.io/github/license/kxwu222/mimocode-obsidian)
 ![GitHub release](https://img.shields.io/github/v/release/kxwu222/mimocode-obsidian)
 
-An Obsidian plugin that brings [Xiaomi MiMo](https://mimo.mi.com) into your vault sidebar as an AI assistant.
+An Obsidian plugin that brings [Xiaomi MiMo](https://mimo.mi.com) into your vault sidebar as a chat assistant. Paste an API key and start talking — no CLI, no extra runtime.
+
+![MiMo chat sidebar naming the open Daily.md note](docs/sidebar.png)
 
 ## Features
 
-**Chat sidebar** — Open a persistent chat panel from the ribbon or command palette. MiMo can answer questions, help you think through problems, and work with your vault content step by step.
+**Chat sidebar** — Open a streaming chat panel from the ribbon or command palette. Ask questions, think through a note, or bounce ideas while you write. Threads are saved locally and come back when you reopen Obsidian.
 
-**MCP tool use** — MCP servers connected to let MiMo read and write vault files, search the web, and run multi-step agentic tasks autonomously.
+**Inline edit** — Select text in a note and run **MiMo: Inline edit** (bind a hotkey in Settings → Hotkeys). MiMo rewrites the selection in place. Preview the change as a line-level diff before you commit.
 
-**Inline-Edit** — Select any text in a note and invoke the inline-edit hotkey. MiMo rewrites it in place, with a word-level diff preview before you commit.
+**Multi-tab** — Run several chats side by side for separate threads.
 
-**Prompt Tuning** — Type `#` in an empty chat input to describe a behavior in plain language. MiMo rewrites it into a clean system instruction and saves it to your settings after confirmation.
+**Image attachments** — Drop or paste jpeg, png, gif, or webp into the *current* message. Images stay with the chat on disk so you can reopen the thread after a restart.
 
-**Conversation History** — Sessions are saved locally in your vault. Resume, browse, or delete past conversations at any time.
+**Editor context** — The active note’s contents, `@`-mentioned notes, and any editor / canvas / browser selection are sent with the turn so MiMo can see what you are looking at. It does not read or write the rest of the vault on its own.
 
-**Multi-Tab** — Run multiple chat tabs in parallel for separate contexts or tasks.
+## Not in this plugin
 
-**Image Attachments** — Drop images directly into messages.
+This is an HTTP chat client, not a vault agent. It does **not** run shell commands, MCP servers, skills, or subagents.
+
+If you want MiMo-Code to read, write, and search the vault with plan/build modes, use [Sidebar MiMo-Code](https://github.com/AllenX95/sidebar-mimocode) (requires the MiMo-Code CLI).
 
 ## Requirements
 
@@ -35,19 +39,20 @@ An Obsidian plugin that brings [Xiaomi MiMo](https://mimo.mi.com) into your vaul
 
 1. Install from Obsidian Community Plugins — search **MiMo**.
 2. Open **Settings → MiMo**.
-3. Toggle **Enable MiMo** on.
-4. Set **Billing mode** to match your account type.
-5. Paste your **API key** (`tp-xxxxx` for Token Plan, `sk-xxxxx` for pay as you go).
-6. Token Plan users: select the **cluster** closest to you (Europe, Asia Pacific, or China).
-7. Click **Test connection** to confirm everything works.
-8. Open the sidebar from the ribbon icon or via **MiMo: Open chat** in the command palette.
+3. Set **Billing mode** to match your account type.
+4. Paste your **API key** (`tp-xxxxx` for Token Plan, `sk-xxxxx` for pay as you go).
+5. Token Plan users: select the **cluster** closest to you (Europe, Asia Pacific, or China).
+6. Click **Test connection** to confirm everything works.
+7. Open the sidebar from the ribbon icon or via **MiMo: Open chat** in the command palette.
+
+MiMo is on by default. Turn **Enable MiMo** off only if you want to disable chat in this vault.
 
 ## Models
 
 | Model | Description |
 |-------|-------------|
-| `mimo-v2.5-pro` | Flagship — 1T params, 42B active, 1M context, native MCP tool calling (default) |
-| `mimo-v2.5` | Multimodal — image, video, and audio input support |
+| `mimo-v2.5` | Default. Chat plus image input. |
+| `mimo-v2.5-pro` | Flagship — 1T params, 42B active, 1M context |
 
 ## API Endpoints
 
@@ -66,7 +71,7 @@ https://api.xiaomimimo.com/v1
 
 ## Privacy
 
-Your messages and vault context are sent to Xiaomi MiMo's API servers in accordance with their [Terms of Service](https://mimo.mi.com). Conversation history is stored locally in your vault. This plugin collects no data.
+Your messages, attached images, and any editor context you send are transmitted to Xiaomi MiMo's API servers in accordance with their [Terms of Service](https://mimo.mi.com). This plugin collects no analytics of its own. Chat transcripts (including attached image bytes) are stored locally under the plugin folder in your vault config directory so History can restore them after a restart.
 
 ## Credits
 

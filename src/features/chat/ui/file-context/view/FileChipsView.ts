@@ -42,16 +42,20 @@ export class FileChipsView {
   }
 
   private renderFileChip(filePath: string, onRemove: () => void): void {
-    const chipEl = this.fileIndicatorEl.createDiv({ cls: 'claudian-file-chip' });
+    const chipEl = this.fileIndicatorEl.createDiv({
+      cls: 'claudian-file-chip claudian-file-chip--current',
+    });
 
     const iconEl = chipEl.createSpan({ cls: 'claudian-file-chip-icon' });
     setIcon(iconEl, 'file-text');
 
     const normalizedPath = filePath.replace(/\\/g, '/');
     const filename = normalizedPath.split('/').pop() || filePath;
+    chipEl.createSpan({ cls: 'claudian-file-chip-label', text: 'This note' });
     const nameEl = chipEl.createSpan({ cls: 'claudian-file-chip-name' });
     nameEl.setText(filename);
     nameEl.setAttribute('title', filePath);
+    chipEl.setAttribute('aria-label', `This note: ${filename}`);
 
     const removeEl = chipEl.createSpan({ cls: 'claudian-file-chip-remove' });
     removeEl.setText('\u00D7');

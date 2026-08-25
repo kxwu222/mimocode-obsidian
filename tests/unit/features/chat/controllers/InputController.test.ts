@@ -1004,6 +1004,39 @@ describe('InputController - Message Queue', () => {
       expect(prompts[1]).not.toContain('<linked_note>');
     });
 
+    it('passes attached vault files on every turn', async () => {
+      const requests: Array<{ attachedFilePaths?: string[] }> = [];
+      const fileContextManager = {
+        startSession: jest.fn(),
+        getCurrentNotePath: jest.fn().mockReturnValue('notes/session.md'),
+        shouldSendCurrentNote: jest.fn().mockReturnValue(false),
+        markCurrentNoteSent: jest.fn(),
+        transformContextMentions: jest.fn().mockImplementation((text: string) => text),
+        getAttachedFiles: jest.fn().mockReturnValue(new Set(['notes/session.md', 'notes/other.md'])),
+      };
+
+      deps.getFileContextManager = () => fileContextManager as any;
+      (deps as any).mockAgentService.prepareTurn = jest.fn().mockImplementation((request: any) => {
+        requests.push(request);
+        return {
+          request,
+          persistedContent: request.text,
+          prompt: request.text,
+          isCompact: false,
+          mcpMentions: new Set(),
+        };
+      });
+
+      inputEl.value = 'First message';
+      await controller.sendMessage();
+
+      inputEl.value = 'Second message';
+      await controller.sendMessage();
+
+      expect(requests[0].attachedFilePaths).toEqual(['notes/session.md', 'notes/other.md']);
+      expect(requests[1].attachedFilePaths).toEqual(['notes/session.md', 'notes/other.md']);
+    });
+
     it('should not persist currentNote metadata for /compact turns', async () => {
       const fileContextManager = {
         startSession: jest.fn(),
@@ -2036,7 +2069,7 @@ describe('InputController - Message Queue', () => {
       const assistantMsg = deps.state.messages.find((m: any) => m.role === 'assistant');
       expect(assistantMsg).toBeDefined();
       expect(assistantMsg!.durationSeconds).toBe(5);
-      expect(assistantMsg!.durationFlavorWord).toBeDefined();
+      expect(assistantMsg!.durationFlavorWord).toBeUndefined();
 
       jest.spyOn(performance, 'now').mockRestore();
     });

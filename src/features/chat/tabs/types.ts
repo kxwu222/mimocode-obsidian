@@ -17,6 +17,7 @@ import type { BangBashModeManager } from '../ui/BangBashModeManager';
 import type { FileContextManager } from '../ui/FileContext';
 import type { ImageContextManager } from '../ui/ImageContext';
 import type {
+  AttachmentButton,
   ContextUsageMeter,
   ExternalContextSelector,
   McpServerSelector,
@@ -117,6 +118,7 @@ export interface TabUIComponents {
   fileContextManager: FileContextManager | null;
   imageContextManager: ImageContextManager | null;
   modelSelector: ModelSelector | null;
+  attachmentButton: AttachmentButton | null;
   modeSelector: ModeSelector | null;
   thinkingBudgetSelector: ThinkingBudgetSelector | null;
   externalContextSelector: ExternalContextSelector | null;

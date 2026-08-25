@@ -15,14 +15,14 @@
 }
 
 /* Input wrapper (border container) - flex column so textarea expands when no chips */
-/* Height calculation: context row (36px) + textarea min (60px) + toolbar (38px) + border (2px) = 136px */
+/* Height calculation: textarea min (36px) + toolbar (~32px) + padding + border ≈ 72px */
 .claudian-input-wrapper {
   --claudian-input-wrapper-border-color: var(--background-modifier-border);
   --claudian-input-wrapper-box-shadow: none;
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 140px;
+  min-height: 72px;
   border: 1px solid var(--claudian-input-wrapper-border-color);
   border-radius: 6px;
   background: var(--background-primary);
@@ -103,7 +103,7 @@
 .claudian-selection-indicator,
 .claudian-browser-selection-indicator,
 .claudian-canvas-indicator {
-  color: #7abaff;
+  color: var(--interactive-accent);
   font-size: 12px;
   line-height: 1;
   opacity: 0.9;
@@ -123,7 +123,7 @@
 .claudian-input-wrapper textarea.claudian-input {
   width: 100%;
   flex: 1 1 0;
-  min-height: var(--claudian-textarea-min-height, 60px);
+  min-height: var(--claudian-textarea-min-height, 36px);
   max-height: var(--claudian-textarea-max-height, none);
   resize: none;
   padding: 8px 10px 10px 10px;
@@ -181,6 +181,12 @@
   cursor: pointer;
 }
 
+.claudian-file-chip--current {
+  max-width: 280px;
+  border-color: var(--interactive-accent);
+  background: var(--background-secondary);
+}
+
 .claudian-file-chip-icon {
   display: flex;
   align-items: center;
@@ -191,6 +197,12 @@
 .claudian-file-chip-icon svg {
   width: 12px;
   height: 12px;
+}
+
+.claudian-file-chip-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
 }
 
 .claudian-file-chip-name {

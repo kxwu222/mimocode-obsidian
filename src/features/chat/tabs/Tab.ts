@@ -347,6 +347,8 @@ function applyProviderUIGating(tab: TabData, plugin: ClaudianPlugin): void {
   }
   tab.ui.mcpServerSelector?.setVisible(capabilities.supportsMcpTools);
   tab.ui.permissionToggle?.setVisible(hasPermissionToggle);
+  tab.ui.externalContextSelector?.setVisible(capabilities.supportsPersistentRuntime);
+  tab.ui.contextUsageMeter?.setVisible(capabilities.supportsPersistentRuntime);
   tab.ui.fileContextManager?.setMcpManager(mcpManager);
 
   tab.ui.fileContextManager?.setAgentService(
@@ -354,6 +356,7 @@ function applyProviderUIGating(tab: TabData, plugin: ClaudianPlugin): void {
   );
 
   tab.ui.imageContextManager?.setEnabled(capabilities.supportsImageAttachments);
+  tab.ui.attachmentButton?.setVisible(capabilities.supportsImageAttachments);
   tab.ui.contextUsageMeter?.update(tab.state.usage);
 }
 
@@ -502,6 +505,7 @@ export function createTab(options: TabCreateOptions): TabData {
       fileContextManager: null,
       imageContextManager: null,
       modelSelector: null,
+      attachmentButton: null,
       modeSelector: null,
       thinkingBudgetSelector: null,
       externalContextSelector: null,
@@ -539,8 +543,8 @@ function buildTabDOM(contentEl: HTMLElement): TabDOMElements {
   const inputEl = inputWrapper.createEl('textarea', {
     cls: 'claudian-input',
     attr: {
-      placeholder: 'How can i help you today?',
-      rows: '3',
+      placeholder: 'Ask about this note…',
+      rows: '2',
       dir: 'auto',
     },
   });
@@ -688,6 +692,7 @@ function initializeContextManagers(tab: TabData, plugin: ClaudianPlugin): void {
         tab.controllers.selectionController?.updateContextRowVisibility();
         tab.controllers.browserSelectionController?.updateContextRowVisibility();
         tab.controllers.canvasSelectionController?.updateContextRowVisibility();
+        tab.controllers.conversationController?.refreshWelcome();
         autoResizeTextarea(dom.inputEl);
         tab.renderer?.scrollToBottomIfNeeded();
       },
@@ -905,9 +910,13 @@ function initializeInputToolbar(
         mode === 'plan' && getTabCapabilities(tab, plugin).supportsPlanMode,
       );
     },
+    onAttachImage: () => {
+      tab.ui.imageContextManager?.pickImages();
+    },
   });
 
   tab.ui.modelSelector = toolbarComponents.modelSelector;
+  tab.ui.attachmentButton = toolbarComponents.attachmentButton;
   tab.ui.modeSelector = toolbarComponents.modeSelector;
   tab.ui.thinkingBudgetSelector = toolbarComponents.thinkingBudgetSelector;
   tab.ui.contextUsageMeter = toolbarComponents.contextUsageMeter;

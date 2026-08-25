@@ -7,7 +7,6 @@ import { ProviderSettingsCoordinator } from '../../core/providers/ProviderSettin
 import { DEFAULT_CHAT_PROVIDER_ID, type ProviderId } from '../../core/providers/types';
 import { VIEW_TYPE_CLAUDIAN } from '../../core/types';
 import type ClaudianPlugin from '../../main';
-import { createProviderIconSvg } from '../../shared/icons';
 import {
   cancelScheduledAnimationFrame,
   scheduleAnimationFrame,
@@ -46,7 +45,6 @@ export class ClaudianView extends ItemView {
 
   // DOM Elements
   private viewContainerEl: HTMLElement | null = null;
-  private logoEl: HTMLElement | null = null;
   private newTabButtonEl: HTMLElement | null = null;
 
   // Header elements
@@ -173,9 +171,6 @@ export class ClaudianView extends ItemView {
     this.viewContainerEl.empty();
     this.viewContainerEl.addClass('claudian-container');
 
-    const header = this.viewContainerEl.createDiv({ cls: 'claudian-header' });
-    this.buildHeader(header);
-
     this.navRowContent = this.buildNavRowContent();
     this.tabContentEl = this.viewContainerEl.createDiv({ cls: 'claudian-tab-content-container' });
     this.buildInputFooter();
@@ -264,15 +259,6 @@ export class ClaudianView extends ItemView {
   // ============================================
   // UI Building
   // ============================================
-
-  private buildHeader(header: HTMLElement): void {
-    const titleEl = header.createDiv({ cls: 'claudian-title' });
-
-    this.logoEl = titleEl.createSpan({ cls: 'claudian-logo' });
-    this.syncHeaderLogo(DEFAULT_CHAT_PROVIDER_ID);
-
-    titleEl.createEl('h4', { text: 'MiMo', cls: 'claudian-title-text' });
-  }
 
   /**
    * Builds the active tab nav row content.
@@ -484,24 +470,6 @@ export class ClaudianView extends ItemView {
     const activeTab = this.tabManager?.getActiveTab();
     const providerId = activeTab ? getTabProviderId(activeTab, this.plugin) : DEFAULT_CHAT_PROVIDER_ID;
     this.viewContainerEl.dataset.provider = providerId;
-    this.syncHeaderLogo(providerId);
-  }
-
-  /** Rebuilds the header logo SVG to match the given provider. */
-  private syncHeaderLogo(providerId: ProviderId): void {
-    if (!this.logoEl) return;
-    const icon = ProviderRegistry.getChatUIConfig(providerId).getProviderIcon?.();
-    if (!icon) return;
-    const existing = this.logoEl.querySelector('svg');
-    if (existing?.getAttribute('data-provider') === providerId) return;
-    this.logoEl.empty();
-    const svg = createProviderIconSvg(icon, {
-      dataProvider: providerId,
-      height: 18,
-      ownerDocument: this.logoEl.ownerDocument,
-      width: 18,
-    });
-    this.logoEl.appendChild(svg);
   }
 
   // ============================================

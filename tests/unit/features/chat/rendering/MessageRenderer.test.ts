@@ -717,8 +717,8 @@ describe('MessageRenderer', () => {
     const footerEl = contentEl.children.find((c: any) => c.hasClass('claudian-response-footer'));
     expect(footerEl).toBeDefined();
     const durationSpan = footerEl!.children[0];
-    expect(durationSpan.textContent).toContain('Baked');
     expect(durationSpan.textContent).toContain('1m 5s');
+    expect(durationSpan.textContent).not.toContain('Baked');
   });
 
   it('does not render footer when durationSeconds is 0', () => {
@@ -745,7 +745,7 @@ describe('MessageRenderer', () => {
     expect(footerEl).toBeUndefined();
   });
 
-  it('uses default flavor word "Baked" when durationFlavorWord is not set', () => {
+  it('renders duration without a flavor word', () => {
     const messagesEl = createMockEl();
     const { renderer } = createRenderer(messagesEl);
     jest.spyOn(renderer, 'renderContent').mockResolvedValue(undefined);
@@ -767,7 +767,7 @@ describe('MessageRenderer', () => {
     const contentEl = msgEl.children[0];
     const footerEl = contentEl.children.find((c: any) => c.hasClass('claudian-response-footer'));
     expect(footerEl).toBeDefined();
-    expect(footerEl!.children[0].textContent).toContain('Baked');
+    expect(footerEl!.children[0].textContent).toBe('30s');
   });
 
   it('renders fallback content for old conversations without contentBlocks', () => {

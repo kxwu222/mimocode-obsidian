@@ -74,6 +74,7 @@ const createMockImageContextManager = () => ({
   destroy: jest.fn(),
   clearImages: jest.fn(),
   setEnabled: jest.fn(),
+  pickImages: jest.fn(),
 });
 
 const createMockSlashCommandDropdown = () => ({
@@ -107,6 +108,10 @@ const createMockStatusPanel = () => ({
   remount: jest.fn(),
   updateTodos: jest.fn(),
   destroy: jest.fn(),
+});
+
+const createMockAttachmentButton = () => ({
+  setVisible: jest.fn(),
 });
 
 const createMockModelSelector = () => ({
@@ -164,6 +169,7 @@ const createMockExternalContextSelector = () => ({
   setOnChange: jest.fn(),
   setPersistentPaths: jest.fn(),
   setOnPersistenceChange: jest.fn(),
+  setVisible: jest.fn(),
 });
 
 const createMockMcpServerSelector = () => ({
@@ -190,6 +196,7 @@ let mockInstructionModeManager: ReturnType<typeof createMockInstructionModeManag
 let mockBangBashModeManager: ReturnType<typeof createMockBangBashModeManager>;
 let mockStatusPanel: ReturnType<typeof createMockStatusPanel>;
 let mockModelSelector: ReturnType<typeof createMockModelSelector>;
+let mockAttachmentButton: ReturnType<typeof createMockAttachmentButton>;
 let mockModeSelector: ReturnType<typeof createMockModeSelector>;
 let mockThinkingBudgetSelector: ReturnType<typeof createMockThinkingBudgetSelector>;
 let mockContextUsageMeter: ReturnType<typeof createMockContextUsageMeter>;
@@ -270,6 +277,7 @@ jest.mock('@/features/chat/ui/StatusPanel', () => ({
 jest.mock('@/features/chat/ui/InputToolbar', () => ({
   createInputToolbar: jest.fn().mockImplementation(() => {
     mockModelSelector = createMockModelSelector();
+    mockAttachmentButton = createMockAttachmentButton();
     mockModeSelector = createMockModeSelector();
     mockThinkingBudgetSelector = createMockThinkingBudgetSelector();
     mockContextUsageMeter = createMockContextUsageMeter();
@@ -279,6 +287,7 @@ jest.mock('@/features/chat/ui/InputToolbar', () => ({
     mockServiceTierToggle = createMockServiceTierToggle();
     return {
       modelSelector: mockModelSelector,
+      attachmentButton: mockAttachmentButton,
       modeSelector: mockModeSelector,
       thinkingBudgetSelector: mockThinkingBudgetSelector,
       contextUsageMeter: mockContextUsageMeter,
@@ -1664,11 +1673,29 @@ describe('Tab - UI Initialization', () => {
       initializeTabUI(tab, options.plugin);
 
       expect(tab.ui.modelSelector).toBeDefined();
+      expect(tab.ui.attachmentButton).toBeDefined();
       expect(tab.ui.thinkingBudgetSelector).toBeDefined();
       expect(tab.ui.contextUsageMeter).toBeDefined();
       expect(tab.ui.externalContextSelector).toBeDefined();
       expect(tab.ui.mcpServerSelector).toBeDefined();
       expect(tab.ui.permissionToggle).toBeDefined();
+      expect(mockExternalContextSelector.setVisible).toHaveBeenCalledWith(false);
+      expect(mockContextUsageMeter.setVisible).toHaveBeenCalledWith(false);
+      expect(mockAttachmentButton.setVisible).toHaveBeenCalledWith(true);
+    });
+
+    it('wires the attach button to the image picker', () => {
+      const options = createMockOptions();
+      const tab = createTab(options);
+      initializeTabUI(tab, options.plugin);
+
+      const toolbarModule = jest.requireMock('@/features/chat/ui/InputToolbar') as {
+        createInputToolbar: jest.Mock;
+      };
+      const toolbarCallbacks = toolbarModule.createInputToolbar.mock.calls.at(-1)?.[1];
+      toolbarCallbacks.onAttachImage();
+
+      expect(mockImageContextManager.pickImages).toHaveBeenCalled();
     });
 
     it('should create bang-bash mode from provider UI config', () => {
@@ -2036,23 +2063,23 @@ describe('Tab - Event Handler Behavior', () => {
       expect(mockSlashCommandDropdown.setEnabled).toHaveBeenCalledWith(true);
     });
 
-    it('should handle instruction mode trigger key', () => {
+    it('does not route # into instruction mode when the provider does not support it', () => {
       mockInstructionModeManager.handleTriggerKey.mockReturnValueOnce(true);
       const { fireKeydown } = setupKeydownTab();
 
       fireKeydown({ key: '#', preventDefault: jest.fn() });
 
-      expect(mockInstructionModeManager.handleTriggerKey).toHaveBeenCalled();
+      expect(mockInstructionModeManager.handleTriggerKey).not.toHaveBeenCalled();
     });
 
-    it('should handle instruction mode keydown', () => {
+    it('does not route Tab into instruction mode when the provider does not support it', () => {
       mockInstructionModeManager.handleTriggerKey.mockReturnValue(false);
       mockInstructionModeManager.handleKeydown.mockReturnValueOnce(true);
       const { fireKeydown } = setupKeydownTab();
 
       fireKeydown({ key: 'Tab', preventDefault: jest.fn() });
 
-      expect(mockInstructionModeManager.handleKeydown).toHaveBeenCalled();
+      expect(mockInstructionModeManager.handleKeydown).not.toHaveBeenCalled();
     });
 
     it('should handle slash command dropdown keydown', () => {

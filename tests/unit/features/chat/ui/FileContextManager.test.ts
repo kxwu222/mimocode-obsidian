@@ -192,31 +192,37 @@ describe('FileContextManager', () => {
     manager.destroy();
   });
 
-  it('renders current note chip and removes on click', () => {
-    const app = createMockApp();
-    const manager = new FileContextManager(
-      app,
-      containerEl as any,
-      inputEl,
-      createMockCallbacks()
-    );
+    it('renders current note chip and removes on click', () => {
+      const app = createMockApp();
+      const manager = new FileContextManager(
+        app,
+        containerEl as any,
+        inputEl,
+        createMockCallbacks()
+      );
 
-    manager.setCurrentNote('notes/chip.md');
+      manager.setCurrentNote('notes/chip.md');
 
-    const indicator = findByClass(containerEl, 'claudian-file-indicator');
-    expect(indicator).toBeDefined();
-    expect(indicator?.style.display).toBe('flex');
+      const indicator = findByClass(containerEl, 'claudian-file-indicator');
+      expect(indicator).toBeDefined();
+      expect(indicator?.style.display).toBe('flex');
 
-    const removeEl = findByClass(containerEl, 'claudian-file-chip-remove');
-    expect(removeEl).toBeDefined();
+      const label = findByClass(containerEl, 'claudian-file-chip-label');
+      expect(label?.textContent).toBe('This note');
+      const name = findByClass(containerEl, 'claudian-file-chip-name');
+      expect(name?.textContent).toBe('chip.md');
+      expect(findByClass(containerEl, 'claudian-file-chip')?.hasClass('claudian-file-chip--current')).toBe(true);
 
-    removeEl!.click();
+      const removeEl = findByClass(containerEl, 'claudian-file-chip-remove');
+      expect(removeEl).toBeDefined();
 
-    expect(manager.getCurrentNotePath()).toBeNull();
-    expect(indicator?.style.display).toBe('none');
+      removeEl!.click();
 
-    manager.destroy();
-  });
+      expect(manager.getCurrentNotePath()).toBeNull();
+      expect(indicator?.style.display).toBe('none');
+
+      manager.destroy();
+    });
 
   it('auto-attaches active file unless excluded by tag', () => {
     const fileCacheByPath = new Map<string, any>([
@@ -529,8 +535,8 @@ describe('FileContextManager', () => {
       manager.destroy();
     });
 
-    it('should not update current note when session is started', () => {
-      const app = createMockApp({ files: ['notes/a.md'] });
+    it('should follow the active file after the session starts', () => {
+      const app = createMockApp({ files: ['notes/a.md', 'notes/b.md'] });
       const manager = new FileContextManager(
         app, containerEl as any, inputEl, createMockCallbacks()
       );
@@ -540,8 +546,9 @@ describe('FileContextManager', () => {
 
       const fileB = createMockTFile('notes/b.md');
       manager.handleFileOpen(fileB);
-      // Should NOT update because session is started
-      expect(manager.getCurrentNotePath()).toBe('notes/a.md');
+      expect(manager.getCurrentNotePath()).toBe('notes/b.md');
+      expect(manager.getAttachedFiles().has('notes/a.md')).toBe(false);
+      expect(manager.getAttachedFiles().has('notes/b.md')).toBe(true);
       manager.destroy();
     });
 

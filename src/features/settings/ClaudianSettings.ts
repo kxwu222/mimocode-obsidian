@@ -14,7 +14,6 @@ import type { Locale, TranslationKey } from '../../i18n/types';
 import type ClaudianPlugin from '../../main';
 import { formatContextLimit, parseContextLimit, parseEnvironmentVariables } from '../../utils/env';
 import { buildNavMappingText, parseNavMappings } from './keyboardNavigation';
-import { renderEnvironmentSettingsSection } from './ui/EnvironmentSettingsSection';
 
 type SettingsTabId = string;
 type ObsidianHotkey = { modifiers: string[]; key: string };
@@ -275,18 +274,6 @@ export class ClaudianSettingTab extends PluginSettingTab {
           })
       );
 
-    new Setting(container)
-      .setName(t('settings.expandFileEditsByDefault.name'))
-      .setDesc(t('settings.expandFileEditsByDefault.desc'))
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.expandFileEditsByDefault ?? false)
-          .onChange(async (value) => {
-            this.plugin.settings.expandFileEditsByDefault = value;
-            await this.plugin.saveSettings();
-          })
-      );
-
     // --- Conversations ---
 
     new Setting(container).setName(t('settings.conversations')).setHeading();
@@ -347,24 +334,6 @@ export class ClaudianSettingTab extends PluginSettingTab {
             this.plugin.settings.userName = value;
             await this.plugin.saveSettings();
           });
-        text.inputEl.addEventListener('blur', () => {
-          void this.restartServiceForPromptChange();
-        });
-      });
-
-    new Setting(container)
-      .setName(t('settings.systemPrompt.name'))
-      .setDesc(t('settings.systemPrompt.desc'))
-      .addTextArea((text) => {
-        text
-          .setPlaceholder(t('settings.systemPrompt.name'))
-          .setValue(this.plugin.settings.systemPrompt)
-          .onChange(async (value) => {
-            this.plugin.settings.systemPrompt = value;
-            await this.plugin.saveSettings();
-          });
-        text.inputEl.rows = 6;
-        text.inputEl.cols = 50;
         text.inputEl.addEventListener('blur', () => {
           void this.restartServiceForPromptChange();
         });
@@ -480,24 +449,11 @@ export class ClaudianSettingTab extends PluginSettingTab {
     new Setting(container).setName(t('settings.hotkeys')).setHeading();
 
     const hotkeyGrid = container.createDiv({ cls: 'claudian-hotkey-grid' });
-    addHotkeySettingRow(hotkeyGrid, this.app, 'claudian:inline-edit', 'settings.inlineEditHotkey');
-    addHotkeySettingRow(hotkeyGrid, this.app, 'claudian:open-view', 'settings.openChatHotkey');
-    addHotkeySettingRow(hotkeyGrid, this.app, 'claudian:new-session', 'settings.newSessionHotkey');
-    addHotkeySettingRow(hotkeyGrid, this.app, 'claudian:new-tab', 'settings.newTabHotkey');
-    addHotkeySettingRow(hotkeyGrid, this.app, 'claudian:close-current-tab', 'settings.closeTabHotkey');
-
-    // --- Environment ---
-
-    renderEnvironmentSettingsSection({
-      container,
-      plugin: this.plugin,
-      scope: 'shared',
-      heading: t('settings.environment'),
-      name: 'Shared environment',
-      desc: 'Provider-neutral runtime variables shared across all providers. Use this for PATH, proxy, cert, and temp variables.',
-      placeholder: 'PATH=/opt/homebrew/bin:/usr/local/bin\nHTTPS_PROXY=http://proxy.example.com:8080\nSSL_CERT_FILE=/path/to/cert.pem',
-      renderCustomContextLimits: (target) => this.renderCustomContextLimits(target),
-    });
+    addHotkeySettingRow(hotkeyGrid, this.app, 'mimocode:inline-edit', 'settings.inlineEditHotkey');
+    addHotkeySettingRow(hotkeyGrid, this.app, 'mimocode:open-view', 'settings.openChatHotkey');
+    addHotkeySettingRow(hotkeyGrid, this.app, 'mimocode:new-session', 'settings.newSessionHotkey');
+    addHotkeySettingRow(hotkeyGrid, this.app, 'mimocode:new-tab', 'settings.newTabHotkey');
+    addHotkeySettingRow(hotkeyGrid, this.app, 'mimocode:close-current-tab', 'settings.closeTabHotkey');
   }
 
   private renderHiddenProviderCommandSetting(

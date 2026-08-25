@@ -16,6 +16,12 @@ describe('formatCurrentNote', () => {
     );
   });
 
+  it('formats note path and body in XML tags', () => {
+    expect(formatCurrentNote('notes/test.md', 'Hello world')).toBe(
+      '<linked_note>\nnotes/test.md\n\nHello world\n</linked_note>'
+    );
+  });
+
   it('handles paths with special characters', () => {
     expect(formatCurrentNote('notes/my file (1).md')).toBe(
       '<linked_note>\nnotes/my file (1).md\n</linked_note>'
@@ -107,6 +113,11 @@ describe('XML_CONTEXT_PATTERN', () => {
     expect(XML_CONTEXT_PATTERN.test(text)).toBe(true);
   });
 
+  it('matches attached_note tag', () => {
+    const text = 'Query\n\n<attached_note>\nother.md\n\nbody\n</attached_note>';
+    expect(XML_CONTEXT_PATTERN.test(text)).toBe(true);
+  });
+
   it('matches context_files tag', () => {
     const text = 'Query\n\n<context_files>\nfile1.md, file2.md\n</context_files>';
     expect(XML_CONTEXT_PATTERN.test(text)).toBe(true);
@@ -170,6 +181,11 @@ describe('extractContentBeforeXmlContext', () => {
     it('extracts content before editor_cursor tag', () => {
       const prompt = 'Insert here\n\n<editor_cursor path="test.md">\n</editor_cursor>';
       expect(extractContentBeforeXmlContext(prompt)).toBe('Insert here');
+    });
+
+    it('extracts content before attached_note tag', () => {
+      const prompt = 'Use this too\n\n<attached_note>\nother.md\n\nbody\n</attached_note>';
+      expect(extractContentBeforeXmlContext(prompt)).toBe('Use this too');
     });
 
     it('extracts content before context_files tag', () => {
@@ -257,6 +273,11 @@ describe('extractUserQuery', () => {
 
     it('strips editor_cursor tags', () => {
       const prompt = 'Query <editor_cursor path="x"></editor_cursor> end';
+      expect(extractUserQuery(prompt)).toBe('Query end');
+    });
+
+    it('strips attached_note tags', () => {
+      const prompt = 'Query <attached_note>file.md\n\nbody</attached_note> end';
       expect(extractUserQuery(prompt)).toBe('Query end');
     });
 

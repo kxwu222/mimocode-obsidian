@@ -1,4 +1,5 @@
-import { ProviderWorkspaceRegistry } from '../../../core/providers/ProviderWorkspaceRegistry';
+import { MarkdownView, TFile } from 'obsidian';
+
 import type { ProviderCapabilities } from '../../../core/providers/types';
 import type { ChatRuntime } from '../../../core/runtime/ChatRuntime';
 import type {
@@ -17,13 +18,7 @@ import type {
   SessionUpdateResult,
   SubagentRuntimeState,
 } from '../../../core/runtime/types';
-import type {
-  ChatMessage,
-  Conversation,
-  SlashCommand,
-  StreamChunk,
-} from '../../../core/types';
-import type { McpServerConfig } from '../../../core/types';
+import type { ChatMessage, Conversation, McpServerConfig, SlashCommand, StreamChunk } from '../../../core/types';
 import type ClaudianPlugin from '../../../main';
 import { appendBrowserContext } from '../../../utils/browser';
 import { appendCanvasContext } from '../../../utils/canvas';
@@ -40,10 +35,12 @@ import {
 } from './buildMimoMessages';
 import type { OpenAIToolDef } from './McpToolRunner';
 import { McpToolRunner } from './McpToolRunner';
+import { applyVaultNoteSnippets, loadVaultNoteSnippets } from './vaultNoteContext';
 
 const MIMO_SYSTEM_PROMPT =
-  'You are MiMo, an advanced AI coding assistant developed by Xiaomi. '
-  + 'Help the user with their coding tasks, answer questions, and assist with their vault.';
+  'You are MiMo, an AI assistant developed by Xiaomi, working inside the user\'s Obsidian vault. '
+  + 'When a message includes <linked_note> or <attached_note> blocks, those blocks contain the full note text. '
+  + 'Use that text directly. You cannot read or write other vault files unless the user pastes them.';
 
 /** Accumulated tool call data from an OpenAI streaming response. */
 interface AccumulatedToolCall {
@@ -67,10 +64,6 @@ export class MimoChatRuntime implements ChatRuntime {
 
   prepareTurn(request: ChatTurnRequest): PreparedChatTurn {
     let prompt = request.text;
-
-    if (request.currentNotePath) {
-      prompt = appendCurrentNote(prompt, request.currentNotePath);
-    }
 
     if (request.editorSelection && request.editorSelection.mode !== 'none') {
       prompt = appendEditorContext(prompt, request.editorSelection);
@@ -126,41 +119,73 @@ export class MimoChatRuntime implements ChatRuntime {
     this.abortController = new AbortController();
     const { signal } = this.abortController;
 
-    const messages = buildMimoMessages(turn, conversationHistory, MIMO_SYSTEM_PROMPT);
+    const prompt = await this.applyVaultNoteContext(turn);
+    const messages = buildMimoMessages({ ...turn, prompt }, conversationHistory, MIMO_SYSTEM_PROMPT);
 
     const rawModel = typeof settings.model === 'string' ? settings.model.trim() : '';
     const selectedModel = rawModel && isMimoModel(rawModel) ? rawModel : mimoSettings.model;
     const baseUrl = getMimoBaseUrl(mimoSettings);
-
-    // Resolve MCP tools if any servers are mentioned.
-    let toolDefs: OpenAIToolDef[] = [];
-    let serverConfigs: Record<string, McpServerConfig> = {};
     const runner = new McpToolRunner();
 
     try {
-      if (turn.mcpMentions.size > 0) {
-        const mcpManager = ProviderWorkspaceRegistry.getMcpServerManager('mimo');
-        if (mcpManager) {
-          serverConfigs = mcpManager.getActiveServers(turn.mcpMentions);
-          if (Object.keys(serverConfigs).length > 0) {
-            toolDefs = await runner.listTools(serverConfigs);
-          }
-        }
-      }
-
       yield* this._runAgentLoop(
         baseUrl,
         mimoSettings.apiKey,
         selectedModel,
         messages,
-        toolDefs,
-        serverConfigs,
+        [],
+        {},
         runner,
         signal,
       );
     } finally {
       await runner.close();
       this.abortController = null;
+    }
+  }
+
+  private async applyVaultNoteContext(turn: PreparedChatTurn): Promise<string> {
+    const currentNotePath = turn.request.currentNotePath;
+    const attachedFilePaths = turn.request.attachedFilePaths ?? [];
+    if (!currentNotePath && attachedFilePaths.length === 0) {
+      return turn.prompt;
+    }
+
+    const snippets = await loadVaultNoteSnippets({
+      currentNotePath,
+      paths: attachedFilePaths,
+      blockedSegments: [this.plugin.app.vault.configDir],
+      readNote: (path) => this.readVaultNote(path),
+    });
+
+    if (snippets.length > 0) {
+      return applyVaultNoteSnippets(turn.prompt, snippets);
+    }
+
+    if (currentNotePath) {
+      return appendCurrentNote(turn.prompt, currentNotePath);
+    }
+
+    return turn.prompt;
+  }
+
+  private async readVaultNote(path: string): Promise<string | null> {
+    const file = this.plugin.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof TFile)) {
+      return null;
+    }
+
+    for (const leaf of this.plugin.app.workspace.getLeavesOfType('markdown')) {
+      const view = leaf.view;
+      if (view instanceof MarkdownView && view.file?.path === path) {
+        return view.editor.getValue();
+      }
+    }
+
+    try {
+      return await this.plugin.app.vault.cachedRead(file);
+    } catch {
+      return null;
     }
   }
 

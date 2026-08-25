@@ -9,8 +9,8 @@ Other provider source directories (`claude/`, `codex/`, `opencode/`, `pi/`, `acp
 - Product: MiMo Code — single-provider, HTTP-only (no CLI subprocess). `MimoChatRuntime` uses `fetch` + SSE against `https://api.xiaomimimo.com/v1` (PAYG) or cluster-specific Token Plan URLs.
 - App shell: `src/app/` owns shared settings defaults and plugin-level storage helpers. `src/core/` owns provider-neutral runtime, registry, tool, and type contracts.
 - Provider boundary: `src/core/runtime/` and `src/core/providers/` define the chat-facing seam. Only `mimo` is registered in `src/providers/index.ts`.
-- Mimo adaptor: `src/providers/mimo/` owns the HTTP runtime, settings (billing mode, API key, cluster, model), capabilities, no-op history service, settings reconciler, chat UI config, settings tab, and auxiliary services (title gen, inline edit, instruction refine via `MimoAuxQueryRunner`).
-- Conversations: `Conversation` carries `providerId: 'mimo'`. Mimo is stateless — no `providerState` or `sessionId` is persisted.
+- Mimo adaptor: `src/providers/mimo/` owns the HTTP runtime, settings (billing mode, API key, cluster, model), capabilities, local transcript persistence, settings reconciler, chat UI config, settings tab, and auxiliary services (title gen, inline edit via `MimoAuxQueryRunner`). Instruction-mode and MCP tool use are disabled until they have a real persistence and settings path.
+- Conversations: `Conversation` carries `providerId: 'mimo'`. Mimo is stateless at the API — no `providerState` or `sessionId` is persisted. Transcripts are written to `{vault.configDir}/plugins/{pluginId}/sessions/{id}.json`. Each turn inlines current-note and `@`-mentioned note bodies (text files only, size-capped).
 
 ## Commands
 
@@ -67,6 +67,7 @@ Tests mirror the `src/` layout under `tests/unit/` and `tests/integration/`.
 | `.codex/agents/*.toml` | Codex vault subagent definitions |
 | `~/.claude/projects/{vault}/*.jsonl` | Claude-native transcripts |
 | `~/.codex/sessions/**/*.jsonl` | Codex-native transcripts |
+| `{vault.configDir}/plugins/{pluginId}/sessions/{id}.json` | MiMo chat transcripts (messages + image bytes) |
 
 ## Development Notes
 

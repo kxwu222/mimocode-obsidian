@@ -15,7 +15,7 @@ export const MIMO_CLUSTER_URLS: Record<MimoCluster, string> = {
 
 export const MIMO_MODELS = [
   { value: 'mimo-v2.5-pro', label: 'MiMo V2.5 Pro', description: '1T params · 42B active · 1M context' },
-  { value: 'mimo-v2.5', label: 'MiMo V2.5', description: 'Multimodal · image / video / audio' },
+  { value: 'mimo-v2.5', label: 'MiMo V2.5', description: 'Default · image input' },
 ] as const;
 
 export type MimoModelId = typeof MIMO_MODELS[number]['value'];
@@ -30,7 +30,7 @@ export interface PersistedMimoProviderSettings {
 }
 
 export const DEFAULT_MIMO_PROVIDER_SETTINGS: Readonly<PersistedMimoProviderSettings> = Object.freeze({
-  enabled: false,
+  enabled: true,
   billingMode: 'token-plan',
   apiKey: '',
   cluster: 'ams',
@@ -62,7 +62,9 @@ export function updateMimoProviderSettings(
   });
 }
 
-export function getMimoBaseUrl(settings: PersistedMimoProviderSettings): string {
+export function getMimoBaseUrl(
+  settings: Pick<PersistedMimoProviderSettings, 'billingMode' | 'cluster'>,
+): string {
   return settings.billingMode === 'payg'
     ? MIMO_PAYG_BASE_URL
     : MIMO_CLUSTER_URLS[settings.cluster];

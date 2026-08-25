@@ -53,6 +53,7 @@ export interface ToolbarCallbacks {
   onEffortLevelChange: (effort: string) => Promise<void>;
   onServiceTierChange: (serviceTier: string) => Promise<void>;
   onPermissionModeChange: (mode: string) => Promise<void>;
+  onAttachImage?: () => void;
   getSettings: () => ToolbarSettings;
   getEnvironmentVariables?: () => string;
   getUIConfig: () => ProviderChatUIConfig;
@@ -83,6 +84,13 @@ export class ModelSelector {
     this.container.empty();
 
     this.buttonEl = this.container.createDiv({ cls: 'claudian-model-btn' });
+    this.buttonEl.setAttribute('role', 'button');
+    this.buttonEl.setAttribute('aria-haspopup', 'listbox');
+    this.buttonEl.setAttribute('aria-expanded', 'false');
+    this.buttonEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.setOpen(!this.container.hasClass('open'));
+    });
     this.updateDisplay();
 
     this.dropdownEl = this.container.createDiv({ cls: 'claudian-model-dropdown' });
@@ -140,6 +148,7 @@ export class ModelSelector {
 
       option.addEventListener('click', (e) => {
         e.stopPropagation();
+        this.setOpen(false);
         runToolbarAction(async () => {
           await this.callbacks.onModelChange(model.value);
           this.updateDisplay();
@@ -147,6 +156,31 @@ export class ModelSelector {
         }, 'Failed to change model');
       });
     }
+  }
+
+  private setOpen(open: boolean): void {
+    this.container.toggleClass('open', open);
+    this.buttonEl?.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+}
+
+export class AttachmentButton {
+  private container: HTMLElement;
+
+  constructor(parentEl: HTMLElement, callbacks: ToolbarCallbacks) {
+    this.container = parentEl.createDiv({ cls: 'claudian-attach-btn' });
+    this.container.setAttribute('role', 'button');
+    this.container.setAttribute('aria-label', 'Attach image');
+    this.container.setAttribute('title', 'Attach image');
+    setIcon(this.container, 'image-plus');
+    this.container.addEventListener('click', (e) => {
+      e.stopPropagation();
+      callbacks.onAttachImage?.();
+    });
+  }
+
+  setVisible(visible: boolean): void {
+    this.container.toggleClass('claudian-hidden', !visible);
   }
 }
 
@@ -554,6 +588,10 @@ export class ExternalContextSelector {
     this.callbacks = callbacks;
     this.container = parentEl.createDiv({ cls: 'claudian-external-context-selector' });
     this.render();
+  }
+
+  setVisible(visible: boolean): void {
+    this.container.toggleClass('claudian-hidden', !visible);
   }
 
   setOnChange(callback: (paths: string[]) => void): void {
@@ -1107,6 +1145,7 @@ export class ContextUsageMeter {
   private fillPath: SVGPathElement | null = null;
   private percentEl: HTMLElement | null = null;
   private circumference: number = 0;
+  private enabled = true;
 
   constructor(parentEl: HTMLElement) {
     this.container = parentEl.createDiv({ cls: 'claudian-context-meter' });
@@ -1116,7 +1155,10 @@ export class ContextUsageMeter {
   }
 
   setVisible(visible: boolean): void {
-    this.container.toggleClass('claudian-hidden', !visible);
+    this.enabled = visible;
+    if (!visible) {
+      this.container.addClass('claudian-hidden');
+    }
   }
 
   private render() {
@@ -1172,7 +1214,7 @@ export class ContextUsageMeter {
   }
 
   update(usage: UsageInfo | null): void {
-    if (!usage || usage.contextTokens <= 0) {
+    if (!this.enabled || !usage || usage.contextTokens <= 0) {
       this.container.addClass('claudian-hidden');
       return;
     }
@@ -1214,6 +1256,7 @@ export function createInputToolbar(
   callbacks: ToolbarCallbacks
 ): {
   modelSelector: ModelSelector;
+  attachmentButton: AttachmentButton;
   modeSelector: ModeSelector;
   thinkingBudgetSelector: ThinkingBudgetSelector;
   contextUsageMeter: ContextUsageMeter | null;
@@ -1223,6 +1266,7 @@ export function createInputToolbar(
   serviceTierToggle: ServiceTierToggle;
 } {
   const modelSelector = new ModelSelector(parentEl, callbacks);
+  const attachmentButton = new AttachmentButton(parentEl, callbacks);
   const thinkingBudgetSelector = new ThinkingBudgetSelector(parentEl, callbacks);
   const serviceTierToggle = new ServiceTierToggle(parentEl, callbacks);
   const contextUsageMeter = new ContextUsageMeter(parentEl);
@@ -1233,6 +1277,7 @@ export function createInputToolbar(
 
   return {
     modelSelector,
+    attachmentButton,
     modeSelector,
     thinkingBudgetSelector,
     serviceTierToggle,

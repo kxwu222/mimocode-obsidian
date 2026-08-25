@@ -26,13 +26,37 @@
 }
 
 .claudian-history-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claudian-history-header-title {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.claudian-history-search {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.claudian-history-search:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
 }
 
 .claudian-history-list {
@@ -49,11 +73,12 @@
 
 .claudian-history-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--background-modifier-border);
   transition: background 0.15s ease;
+  cursor: pointer;
 }
 
 .claudian-history-item-icon {
@@ -61,6 +86,7 @@
   align-items: center;
   color: var(--text-muted);
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .claudian-history-item-icon svg {
@@ -80,6 +106,7 @@
   background: var(--background-modifier-hover);
   border-inline-start: 2px solid var(--interactive-accent);
   padding-inline-start: 10px;
+  cursor: default;
 }
 
 .claudian-history-item.active:hover {
@@ -150,20 +177,22 @@
   margin-top: 2px;
 }
 
+.claudian-history-item-preview {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
 .claudian-history-item-actions {
   display: flex;
   gap: 4px;
   margin-inline-start: 8px;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-
-.claudian-history-item:hover .claudian-history-item-actions {
-  opacity: 1;
-}
-
-.claudian-history-item:focus-within .claudian-history-item-actions {
-  opacity: 1;
+  margin-top: 2px;
+  flex-shrink: 0;
+  align-self: center;
 }
 
 .claudian-action-btn {

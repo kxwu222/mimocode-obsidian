@@ -45,7 +45,7 @@ describe('textareaResize', () => {
 
     autoResizeTextarea(textarea);
 
-    expect(textarea.style.getPropertyValue('--claudian-textarea-min-height')).toBe('60px');
+    expect(textarea.style.getPropertyValue('--claudian-textarea-min-height')).toBe(`${TEXTAREA_BASE_MIN_HEIGHT}px`);
   });
 
   it('measures from base height so long content does not bounce', () => {

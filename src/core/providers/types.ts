@@ -412,6 +412,14 @@ export interface ProviderConversationHistoryService {
   ): Record<string, unknown>;
   /** Adds provider-owned persisted metadata to Conversation.providerState before session save. */
   buildPersistedProviderState?(conversation: Conversation): Record<string, unknown> | undefined;
+  /** Providers that persist transcripts in the vault attach storage during plugin load. */
+  attachWorkspaceStorage?(options: {
+    adapter: VaultFileAdapter;
+    configDir: string;
+    pluginId: string;
+  }): void;
+  /** Persist full ChatMessage[] for providers without native history files. */
+  persistConversationMessages?(conversation: Conversation): Promise<void>;
 }
 
 export type ProviderTaskTerminalStatus = Extract<ToolCallInfo['status'], 'completed' | 'error'>;

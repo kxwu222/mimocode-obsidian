@@ -10,8 +10,12 @@
   padding: 4px 8px;
   border-radius: 4px;
   cursor: pointer;
-  color: var(--claudian-brand);
+  color: var(--text-muted);
   font-size: 12px;
+}
+
+.claudian-model-selector.open .claudian-model-btn {
+  color: var(--interactive-accent);
 }
 
 .claudian-model-label {
@@ -48,7 +52,7 @@
   transition: opacity 0.15s ease, visibility 0.15s ease;
 }
 
-.claudian-model-selector:hover .claudian-model-dropdown {
+.claudian-model-selector.open .claudian-model-dropdown {
   opacity: 1;
   visibility: visible;
 }
@@ -93,7 +97,28 @@
 }
 
 .claudian-model-option.selected {
-  background: rgba(var(--claudian-brand-rgb), 0.15);
-  color: var(--claudian-brand);
+  background: var(--background-modifier-hover);
+  color: var(--interactive-accent);
   font-weight: 500;
+}
+
+.claudian-attach-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  margin-inline-start: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.claudian-attach-btn:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+.claudian-attach-btn svg {
+  width: 14px;
+  height: 14px;
 }

@@ -35,11 +35,17 @@
 }
 
 .claudian-welcome-greeting {
-  font-family: 'Copernicus', 'Tiempos Headline', 'Tiempos', Georgia, 'Times New Roman', serif;
-  font-size: 28px;
-  font-weight: 300;
+  font-family: var(--font-interface, var(--font-text));
+  font-size: 15px;
+  font-weight: 500;
   color: var(--text-muted);
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
+}
+
+.claudian-welcome-hint {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-faint);
 }
 
 .claudian-message {
@@ -51,8 +57,9 @@
 
 .claudian-message-user {
   position: relative;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--background-secondary);
   align-self: flex-end;
+  max-width: 85%;
   border-end-end-radius: 4px;
 }
 
@@ -79,7 +86,7 @@
 }
 
 .claudian-interrupted {
-  color: #d45d5d;
+  color: var(--text-error);
 }
 
 .claudian-interrupted-hint {

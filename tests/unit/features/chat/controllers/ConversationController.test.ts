@@ -296,20 +296,22 @@ describe('ConversationController', () => {
       expect(() => controllerWithNullWelcome.initializeWelcome()).not.toThrow();
     });
 
-    it('should only add greeting if not already present', () => {
+    it('should name the open note and keep a single greeting when it changes', () => {
       const welcomeEl = deps.getWelcomeEl()!;
-      const createDivSpy = jest.spyOn(welcomeEl, 'createDiv');
+      const fileContextManager = deps.getFileContextManager()!;
+      (fileContextManager.getCurrentNotePath as jest.Mock).mockReturnValue(null);
 
-      // First call should add greeting
       controller.initializeWelcome();
-      expect(createDivSpy).toHaveBeenCalledTimes(1);
+      expect(welcomeEl.querySelector('.claudian-welcome-greeting')?.textContent)
+        .toBe('Ask about this note');
+      expect(welcomeEl.querySelector('.claudian-welcome-hint')?.textContent)
+        .toBe('@ to attach another note');
 
-      // Mock querySelector to return an element (greeting already exists)
-      welcomeEl.querySelector = jest.fn().mockReturnValue(createMockEl());
-
-      // Second call should not add another greeting
-      controller.initializeWelcome();
-      expect(createDivSpy).toHaveBeenCalledTimes(1); // Still 1, not 2
+      (fileContextManager.getCurrentNotePath as jest.Mock).mockReturnValue('notes/Daily.md');
+      controller.refreshWelcome();
+      expect(welcomeEl.querySelectorAll('.claudian-welcome-greeting')).toHaveLength(1);
+      expect(welcomeEl.querySelector('.claudian-welcome-greeting')?.textContent)
+        .toBe('Ask about Daily.md');
     });
   });
 
@@ -618,9 +620,59 @@ describe('ConversationController', () => {
         controller.updateHistoryDropdown();
 
         expect(dropdown.children.length).toBe(2);
+        const header = dropdown.children[0];
+        expect(header.querySelector('.claudian-history-header-title')?.textContent).toBe('Chats');
+        expect(header.querySelector('.claudian-history-search')).toBeTruthy();
         const list = dropdown.children[1];
         expect(list.hasClass('claudian-history-list')).toBe(true);
         expect(list.children.length).toBe(2);
+      });
+
+      it('should show conversation preview text', () => {
+        (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+          {
+            id: 'conv-1',
+            title: 'Daily plan',
+            preview: 'Summarize the meeting notes',
+            createdAt: 1000,
+            lastResponseAt: 1000,
+          },
+        ]);
+
+        controller.updateHistoryDropdown();
+
+        const preview = dropdown.querySelector('.claudian-history-item-preview');
+        expect(preview?.textContent).toBe('Summarize the meeting notes');
+      });
+
+      it('should filter conversations by title or preview', () => {
+        (deps.plugin.getConversationList as jest.Mock).mockReturnValue([
+          {
+            id: 'conv-1',
+            title: 'Vault structure',
+            preview: 'How folders work',
+            createdAt: 1000,
+            lastResponseAt: 3000,
+          },
+          {
+            id: 'conv-2',
+            title: 'Grocery list',
+            preview: 'milk and eggs',
+            createdAt: 2000,
+            lastResponseAt: 2000,
+          },
+        ]);
+
+        controller.updateHistoryDropdown();
+
+        const search = dropdown.querySelector('.claudian-history-search') as any;
+        search.value = 'grocery';
+        const inputHandlers = search._eventListeners?.get('input');
+        inputHandlers![0]();
+
+        const list = dropdown.querySelector('.claudian-history-list');
+        expect(list?.children.length).toBe(1);
+        expect(list?.querySelector('.claudian-history-item-title')?.textContent).toBe('Grocery list');
       });
 
       it('should show "No conversations" when list is empty', () => {
@@ -1307,29 +1359,17 @@ describe('ConversationController', () => {
     });
   });
 
-  describe('Greeting Time Branches', () => {
-    it.each([
-      { name: 'morning (5-12)', hour: 9, day: 1, patterns: ['morning', 'Coffee'] },
-      { name: 'afternoon (12-18)', hour: 14, day: 2, patterns: ['afternoon'] },
-      { name: 'evening (18-22)', hour: 20, day: 3, patterns: ['evening', 'Evening', 'your day'] },
-      { name: 'night owl (22+)', hour: 23, day: 4, patterns: ['night owl', 'Evening'] },
-      { name: 'early morning night owl (0-4)', hour: 2, day: 0, patterns: ['night owl', 'Evening'] },
-    ])('should include $name greetings', ({ hour, day, patterns }) => {
-      jest.spyOn(Date.prototype, 'getHours').mockReturnValue(hour);
-      jest.spyOn(Date.prototype, 'getDay').mockReturnValue(day);
+  describe('note greeting', () => {
+    it('should name the open note', () => {
+      const fileContextManager = deps.getFileContextManager()!;
+      (fileContextManager.getCurrentNotePath as jest.Mock).mockReturnValue('notes/Daily.md');
+      expect(controller.getGreeting()).toBe('Ask about Daily.md');
+    });
 
-      const greetings = new Set<string>();
-      for (let i = 0; i < 50; i++) {
-        jest.spyOn(Math, 'random').mockReturnValue(i / 50);
-        greetings.add(controller.getGreeting());
-      }
-
-      const hasTimeBased = [...greetings].some(g =>
-        patterns.some(p => g.includes(p))
-      );
-      expect(hasTimeBased).toBe(true);
-
-      jest.restoreAllMocks();
+    it('should fall back when no note is open', () => {
+      const fileContextManager = deps.getFileContextManager()!;
+      (fileContextManager.getCurrentNotePath as jest.Mock).mockReturnValue(null);
+      expect(controller.getGreeting()).toBe('Ask about this note');
     });
   });
 });

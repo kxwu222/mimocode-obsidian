@@ -19,8 +19,10 @@ import { formatDurationMmSs } from '../../../utils/date';
 import { processFileLinks, registerFileLinkHandler } from '../../../utils/fileLink';
 import { replaceImageEmbedsWithHtml } from '../../../utils/imageEmbed';
 import { escapeMathDelimitersForStreaming } from '../../../utils/markdownMath';
+import { MIN_VISIBLE_RESPONSE_SECONDS } from '../constants';
 import { findRewindContext } from '../rewind';
 import { formatConversationDirectoryTitle } from '../utils/conversationDirectoryTitle';
+import { WELCOME_HINT } from '../utils/welcomeCopy';
 import { resolveSubagentLifecycleAdapter } from './subagentLifecycleResolution';
 import {
   renderStoredAsyncSubagent,
@@ -234,6 +236,7 @@ export class MessageRenderer {
     // Recreate welcome element after clearing
     const newWelcomeEl = this.messagesEl.createDiv({ cls: 'claudian-welcome' });
     newWelcomeEl.createDiv({ cls: 'claudian-welcome-greeting', text: getGreeting() });
+    newWelcomeEl.createDiv({ cls: 'claudian-welcome-hint', text: WELCOME_HINT });
 
     for (let i = 0; i < messages.length; i++) {
       this.renderStoredMessage(messages[i], messages, i);
@@ -350,7 +353,7 @@ export class MessageRenderer {
     textEl.appendText(' ');
     textEl.createSpan({
       cls: 'claudian-interrupted-hint',
-      text: '\u00B7 What should Claudian do instead?',
+      text: '\u00B7 Send a follow-up.',
     });
   }
 
@@ -420,11 +423,10 @@ export class MessageRenderer {
 
     // Render response duration footer (skip when message contains a compaction boundary)
     const hasCompactBoundary = msg.contentBlocks?.some(b => b.type === 'context_compacted');
-    if (msg.durationSeconds && msg.durationSeconds > 0 && !hasCompactBoundary) {
-      const flavorWord = msg.durationFlavorWord || 'Baked';
+    if (msg.durationSeconds && msg.durationSeconds >= MIN_VISIBLE_RESPONSE_SECONDS && !hasCompactBoundary) {
       const footerEl = contentEl.createDiv({ cls: 'claudian-response-footer' });
       footerEl.createSpan({
-        text: `* ${flavorWord} for ${formatDurationMmSs(msg.durationSeconds)}`,
+        text: formatDurationMmSs(msg.durationSeconds),
         cls: 'claudian-baked-duration',
       });
     }

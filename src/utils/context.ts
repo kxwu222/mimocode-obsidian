@@ -18,15 +18,29 @@ const NOTE_CONTEXT_SUFFIX_REGEX = new RegExp(`\\n\\n<${NOTE_CONTEXT_TAG_PATTERN}
  * Matches: linked_note/current_note, editor_selection (with attributes), editor_cursor (with attributes),
  * context_files, canvas_selection, browser_selection
  */
-export const XML_CONTEXT_PATTERN = /\n\n<(?:linked_note|current_note|editor_selection|editor_cursor|context_files|canvas_selection|browser_selection)[\s>]/;
+export const XML_CONTEXT_PATTERN = /\n\n<(?:linked_note|current_note|attached_note|editor_selection|editor_cursor|context_files|canvas_selection|browser_selection)[\s>]/;
 const BRACKET_CONTEXT_PATTERN = /\n\[(?:Current note|Editor selection from|Browser selection from|Canvas selection from)\b/;
 
-export function formatCurrentNote(notePath: string): string {
+export function formatCurrentNote(notePath: string, body?: string): string {
+  if (body !== undefined && body.length > 0) {
+    return `<${LINKED_NOTE_TAG}>\n${notePath}\n\n${body}\n</${LINKED_NOTE_TAG}>`;
+  }
   return `<${LINKED_NOTE_TAG}>\n${notePath}\n</${LINKED_NOTE_TAG}>`;
 }
 
-export function appendCurrentNote(prompt: string, notePath: string): string {
-  return `${prompt}\n\n${formatCurrentNote(notePath)}`;
+export function appendCurrentNote(prompt: string, notePath: string, body?: string): string {
+  return `${prompt}\n\n${formatCurrentNote(notePath, body)}`;
+}
+
+export function formatAttachedNote(notePath: string, body: string): string {
+  if (body.length > 0) {
+    return `<attached_note>\n${notePath}\n\n${body}\n</attached_note>`;
+  }
+  return `<attached_note>\n${notePath}\n</attached_note>`;
+}
+
+export function appendAttachedNote(prompt: string, notePath: string, body: string): string {
+  return `${prompt}\n\n${formatAttachedNote(notePath, body)}`;
 }
 
 /**
@@ -100,7 +114,7 @@ export function extractUserQuery(prompt: string): string {
 
   // No XML context - return the whole prompt stripped of any remaining tags
   return prompt
-    .replace(/<(linked_note|current_note)>[\s\S]*?<\/\1>\s*/g, '')
+    .replace(/<(linked_note|current_note|attached_note)>[\s\S]*?<\/\1>\s*/g, '')
     .replace(/<editor_selection[\s\S]*?<\/editor_selection>\s*/g, '')
     .replace(/<editor_cursor[\s\S]*?<\/editor_cursor>\s*/g, '')
     .replace(/<context_files>[\s\S]*?<\/context_files>\s*/g, '')

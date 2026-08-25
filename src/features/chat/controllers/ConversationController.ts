@@ -3,7 +3,7 @@ import { Menu, Notice, setIcon } from 'obsidian';
 import type { TitleGenerationService } from '../../../core/providers/types';
 import type { ChatRuntime } from '../../../core/runtime/ChatRuntime';
 import type { ChatRewindMode } from '../../../core/runtime/types';
-import type { Conversation } from '../../../core/types';
+import type { Conversation, ConversationMeta } from '../../../core/types';
 import { t } from '../../../i18n/i18n';
 import type ClaudianPlugin from '../../../main';
 import { confirm } from '../../../shared/modals/ConfirmModal';
@@ -17,6 +17,7 @@ import type { FileContextManager } from '../ui/FileContext';
 import type { ImageContextManager } from '../ui/ImageContext';
 import type { ExternalContextSelector, McpServerSelector } from '../ui/InputToolbar';
 import type { StatusPanel } from '../ui/StatusPanel';
+import { getWelcomeCopy, paintWelcome } from '../utils/welcomeCopy';
 
 function runConversationAction(action: () => Promise<void>, failureMessage: string): void {
   void action().catch(() => {
@@ -74,9 +75,20 @@ type HistoryRenderOptions = {
   onRerender: () => void;
 };
 
+function conversationMatchesFilter(
+  conversation: ConversationMeta,
+  query: string,
+): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  return conversation.title.toLowerCase().includes(needle)
+    || (conversation.preview ?? '').toLowerCase().includes(needle);
+}
+
 export class ConversationController {
   private deps: ConversationControllerDeps;
   private callbacks: ConversationCallbacks;
+  private historyFilterQuery = '';
 
   constructor(deps: ConversationControllerDeps, callbacks: ConversationCallbacks = {}) {
     this.deps = deps;
@@ -157,7 +169,6 @@ export class ConversationController {
 
       // Recreate welcome element first (before StatusPanel for consistent ordering)
       const welcomeEl = messagesEl.createDiv({ cls: 'claudian-welcome' });
-      welcomeEl.createDiv({ cls: 'claudian-welcome-greeting', text: this.getGreeting() });
       this.deps.setWelcomeEl(welcomeEl);
 
       // Remount StatusPanel to restore state for new conversation
@@ -168,6 +179,7 @@ export class ConversationController {
       const fileCtx = this.deps.getFileContextManager();
       fileCtx?.resetForNewConversation();
       fileCtx?.autoAttachActiveFile();
+      this.refreshWelcome();
 
       this.deps.getImageContextManager()?.clearImages();
       this.deps.getMcpServerSelector()?.clearEnabled();
@@ -572,12 +584,9 @@ export class ConversationController {
   ): void {
     const { plugin, state } = this.deps;
 
-    container.empty();
+    const list = this.ensureHistoryChrome(container, options);
+    list.empty();
 
-    const dropdownHeader = container.createDiv({ cls: 'claudian-history-header' });
-    dropdownHeader.createSpan({ text: 'Conversations' });
-
-    const list = container.createDiv({ cls: 'claudian-history-list' });
     const allConversations = plugin.getConversationList();
 
     if (allConversations.length === 0) {
@@ -586,9 +595,16 @@ export class ConversationController {
     }
 
     // Sort by lastResponseAt (fallback to createdAt) descending
-    const conversations = [...allConversations].sort((a, b) => {
-      return (b.lastResponseAt ?? b.createdAt) - (a.lastResponseAt ?? a.createdAt);
-    });
+    const conversations = [...allConversations]
+      .filter((conv) => conversationMatchesFilter(conv, this.historyFilterQuery))
+      .sort((a, b) => {
+        return (b.lastResponseAt ?? b.createdAt) - (a.lastResponseAt ?? a.createdAt);
+      });
+
+    if (conversations.length === 0) {
+      list.createDiv({ cls: 'claudian-history-empty', text: 'No matching chats' });
+      return;
+    }
 
     for (const conv of conversations) {
       const fallbackOpenState: HistoryConversationOpenState =
@@ -618,38 +634,52 @@ export class ConversationController {
       const content = item.createDiv({ cls: 'claudian-history-item-content' });
       const titleEl = content.createDiv({ cls: 'claudian-history-item-title', text: conv.title });
       titleEl.setAttribute('title', conv.title);
+      const preview = conv.preview?.trim();
+      if (preview) {
+        const previewEl = content.createDiv({
+          cls: 'claudian-history-item-preview',
+          text: preview,
+        });
+        previewEl.setAttribute('title', preview);
+      }
       content.createDiv({
         cls: 'claudian-history-item-date',
         text: this.getHistoryItemStatusText(conversationStatus, conv.lastResponseAt ?? conv.createdAt),
       });
 
-      if (!isCurrent) {
-        content.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (this.isHistoryNewTabModifierClick(e) && options.onOpenConversationInNewTab) {
-            e.preventDefault();
-            runConversationAction(
-              () => this.runHistoryAction(
-                () => options.onOpenConversationInNewTab?.(conv.id, true),
-                'Failed to load conversation',
-              ),
-              'Failed to load conversation',
-            );
-            return;
-          }
-
+      const selectConversation = (e: MouseEvent) => {
+        e.stopPropagation();
+        if (this.isHistoryNewTabModifierClick(e) && options.onOpenConversationInNewTab) {
+          e.preventDefault();
           runConversationAction(
             () => this.runHistoryAction(
-              () => options.onSelectConversation(conv.id),
+              () => options.onOpenConversationInNewTab?.(conv.id, true),
               'Failed to load conversation',
             ),
             'Failed to load conversation',
           );
+          return;
+        }
+
+        runConversationAction(
+          () => this.runHistoryAction(
+            () => options.onSelectConversation(conv.id),
+            'Failed to load conversation',
+          ),
+          'Failed to load conversation',
+        );
+      };
+
+      if (!isCurrent) {
+        content.addEventListener('click', selectConversation);
+        item.addEventListener('click', (e) => {
+          const target = e.target as HTMLElement | null;
+          if (target?.closest?.('.claudian-history-item-actions')) return;
+          selectConversation(e);
         });
 
         if (options.onOpenConversationInNewTab) {
-          content.addEventListener('auxclick', (e) => {
-            if (e.button !== 1) return;
+          const openInNewTab = (e: MouseEvent) => {
             e.preventDefault();
             e.stopPropagation();
             runConversationAction(
@@ -659,6 +689,16 @@ export class ConversationController {
               ),
               'Failed to load conversation',
             );
+          };
+          content.addEventListener('auxclick', (e) => {
+            if (e.button !== 1) return;
+            openInNewTab(e);
+          });
+          item.addEventListener('auxclick', (e) => {
+            if (e.button !== 1) return;
+            const target = e.target as HTMLElement | null;
+            if (target?.closest?.('.claudian-history-item-actions')) return;
+            openInNewTab(e);
           });
         }
       }
@@ -729,6 +769,40 @@ export class ConversationController {
         );
       });
     }
+  }
+
+  private ensureHistoryChrome(
+    container: HTMLElement,
+    options: HistoryRenderOptions,
+  ): HTMLElement {
+    const existingList = container.querySelector('.claudian-history-list');
+    if (existingList) {
+      const search = container.querySelector('.claudian-history-search') as HTMLInputElement | null;
+      if (search && search.value !== this.historyFilterQuery) {
+        search.value = this.historyFilterQuery;
+      }
+      return existingList as HTMLElement;
+    }
+
+    container.empty();
+
+    const dropdownHeader = container.createDiv({ cls: 'claudian-history-header' });
+    dropdownHeader.createSpan({ cls: 'claudian-history-header-title', text: 'Chats' });
+    const search = dropdownHeader.createEl('input', {
+      cls: 'claudian-history-search',
+      attr: {
+        type: 'search',
+        placeholder: 'Filter chats',
+        'aria-label': 'Filter chats',
+      },
+    }) as HTMLInputElement;
+    search.value = this.historyFilterQuery;
+    search.addEventListener('input', () => {
+      this.historyFilterQuery = search.value;
+      options.onRerender();
+    });
+
+    return container.createDiv({ cls: 'claudian-history-list' });
   }
 
   private getHistoryConversationStatus(
@@ -925,59 +999,20 @@ export class ConversationController {
   // Welcome & Greeting
   // ============================================
 
-  /** Generates a dynamic greeting based on time/day. */
+  /** Greeting that names the open note. */
   getGreeting(): string {
-    const now = new Date();
-    const hour = now.getHours();
-    const day = now.getDay(); // 0 = Sunday, 6 = Saturday
-    const name = this.deps.plugin.settings.userName?.trim();
+    return getWelcomeCopy(this.deps.getFileContextManager()?.getCurrentNotePath() ?? null).greeting;
+  }
 
-    // Helper to optionally personalize a greeting (with fallback for no-name case)
-    const personalize = (base: string, noNameFallback?: string): string =>
-      name ? `${base}, ${name}` : (noNameFallback ?? base);
-
-    // Day-specific greetings (some personalized, some universal)
-    const dayGreetings: Record<number, string[]> = {
-      0: [personalize('Happy Sunday'), 'Sunday session?', 'Welcome to the weekend'],
-      1: [personalize('Happy Monday'), personalize('Back at it', 'Back at it!')],
-      2: [personalize('Happy Tuesday')],
-      3: [personalize('Happy Wednesday')],
-      4: [personalize('Happy Thursday')],
-      5: [personalize('Happy Friday'), personalize('That Friday feeling')],
-      6: [personalize('Happy Saturday', 'Happy Saturday!'), personalize('Welcome to the weekend')],
-    };
-
-    // Time-specific greetings
-    const getTimeGreetings = (): string[] => {
-      if (hour >= 5 && hour < 12) {
-        return [personalize('Good morning')];
-      } else if (hour >= 12 && hour < 18) {
-        return [personalize('Good afternoon'), personalize('Hey there'), personalize("How's it going") + '?'];
-      } else if (hour >= 18 && hour < 22) {
-        return [personalize('Good evening'), personalize('Evening'), personalize('How was your day') + '?'];
-      } else {
-        return ['Hello, night owl', personalize('Evening')];
-      }
-    };
-
-    // General greetings
-    const generalGreetings = [
-      personalize('Hey there'),
-      name ? `Hi ${name}, how are you?` : 'Hi, how are you?',
-      personalize("How's it going") + '?',
-      personalize('Welcome back') + '!',
-      personalize("What's new") + '?',
-      ...(name ? [`${name} returns!`] : []),
-    ];
-
-    // Combine day + time + general greetings, pick randomly
-    const allGreetings = [
-      ...(dayGreetings[day] || []),
-      ...getTimeGreetings(),
-      ...generalGreetings,
-    ];
-
-    return allGreetings[Math.floor(Math.random() * allGreetings.length)];
+  /** Updates welcome copy when the active note changes. */
+  refreshWelcome(): void {
+    const welcomeEl = this.deps.getWelcomeEl();
+    if (!welcomeEl) return;
+    paintWelcome(
+      welcomeEl,
+      getWelcomeCopy(this.deps.getFileContextManager()?.getCurrentNotePath() ?? null),
+    );
+    this.updateWelcomeVisibility();
   }
 
   /** Updates welcome element visibility based on message count. */
@@ -1004,13 +1039,7 @@ export class ConversationController {
     const fileCtx = this.deps.getFileContextManager();
     fileCtx?.resetForNewConversation();
     fileCtx?.autoAttachActiveFile();
-
-    // Only add greeting if not already present
-    if (!welcomeEl.querySelector('.claudian-welcome-greeting')) {
-      welcomeEl.createDiv({ cls: 'claudian-welcome-greeting', text: this.getGreeting() });
-    }
-
-    this.updateWelcomeVisibility();
+    this.refreshWelcome();
   }
 
   // ============================================

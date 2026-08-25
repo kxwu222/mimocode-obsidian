@@ -68,7 +68,7 @@ export default class ClaudianPlugin extends Plugin {
 
     this.addCommand({
       id: 'open-view',
-      name: 'Open chat view',
+      name: 'Open chat',
       callback: () => {
         void this.activateView();
       },
@@ -314,11 +314,13 @@ export default class ClaudianPlugin extends Plugin {
     );
     const didNormalizeModelVariants = this.normalizeModelVariantSettings();
 
-    const allMetadata = await this.storage.sessions.listMetadata();
-    this.conversations = allMetadata.map(meta => {
-      const resumeSessionId = meta.sessionId !== undefined ? meta.sessionId : meta.id;
+    this.attachProviderTranscriptStorage();
 
-      return {
+    const allMetadata = await this.storage.sessions.listMetadata();
+    const restoredConversations: Conversation[] = [];
+    for (const meta of allMetadata) {
+      const resumeSessionId = meta.sessionId !== undefined ? meta.sessionId : meta.id;
+      const conversation: Conversation = {
         id: meta.id,
         providerId: meta.providerId ?? DEFAULT_CHAT_PROVIDER_ID,
         title: meta.title,
@@ -335,7 +337,16 @@ export default class ClaudianPlugin extends Plugin {
         titleGenerationStatus: meta.titleGenerationStatus,
         resumeAtMessageId: meta.resumeAtMessageId,
       };
-    }).sort(
+
+      await this.loadSdkMessagesForConversation(conversation);
+      // Skip unrestorable shells so History does not show titled empty chats.
+      if (conversation.messages.length === 0) {
+        continue;
+      }
+
+      restoredConversations.push(conversation);
+    }
+    this.conversations = restoredConversations.sort(
       (a, b) => (b.lastResponseAt ?? b.updatedAt) - (a.lastResponseAt ?? a.updatedAt)
     );
     setLocale(this.settings.locale as Locale);
@@ -594,6 +605,19 @@ export default class ClaudianPlugin extends Plugin {
     return previewText.substring(0, 50) + (previewText.length > 50 ? '...' : '');
   }
 
+  private attachProviderTranscriptStorage(): void {
+    const adapter = this.storage.getAdapter();
+    const configDir = this.app.vault.configDir;
+    const pluginId = this.manifest.id;
+    for (const providerId of ProviderRegistry.getRegisteredProviderIds()) {
+      ProviderRegistry.getConversationHistoryService(providerId).attachWorkspaceStorage?.({
+        adapter,
+        configDir,
+        pluginId,
+      });
+    }
+  }
+
   private async loadSdkMessagesForConversation(conversation: Conversation): Promise<void> {
     await ProviderRegistry
       .getConversationHistoryService(conversation.providerId)
@@ -685,9 +709,15 @@ export default class ClaudianPlugin extends Plugin {
       this.storage.sessions.toSessionMetadata(conversation)
     );
 
-    // Clear image data from memory after save (data is persisted by SDK).
-    // Skip for pending forks: their deep-cloned images aren't in SDK storage yet.
-    if (!ProviderRegistry.getConversationHistoryService(conversation.providerId).isPendingForkConversation(conversation)) {
+    const history = ProviderRegistry.getConversationHistoryService(conversation.providerId);
+    await history.persistConversationMessages?.(conversation);
+
+    // SDK-backed providers persist image bytes in native transcripts, so drop
+    // them from memory. Providers that persist locally keep bytes in RAM.
+    if (
+      !history.persistConversationMessages
+      && !history.isPendingForkConversation(conversation)
+    ) {
       for (const msg of conversation.messages) {
         if (msg.images) {
           for (const img of msg.images) {
@@ -717,7 +747,7 @@ export default class ClaudianPlugin extends Plugin {
   }
 
   getConversationList(): ConversationMeta[] {
-    return this.conversations.map(c => ({
+    return this.conversations.filter(c => c.messages.length > 0).map(c => ({
       id: c.id,
       providerId: c.providerId,
       title: c.title,

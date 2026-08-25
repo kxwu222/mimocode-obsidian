@@ -67,7 +67,7 @@
 }
 
 .claudian-tab-badge-streaming {
-  border-color: var(--claudian-brand, #da7756);
+  border-color: var(--claudian-brand, var(--interactive-accent));
 }
 
 .claudian-tab-badge-streaming[data-provider="claude"] {

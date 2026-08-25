@@ -26,6 +26,7 @@ export class ImageContextManager {
   private dropOverlay: HTMLElement | null = null;
   private attachedImages: Map<string, ImageAttachment> = new Map();
   private enabled = true;
+  private fileInputEl: HTMLInputElement | null = null;
 
   constructor(
     containerEl: HTMLElement,
@@ -78,6 +79,42 @@ export class ImageContextManager {
     }
     this.updateImagePreview();
     this.callbacks.onImagesChanged();
+  }
+
+  pickImages(): void {
+    if (!this.enabled) {
+      new Notice('Image attachments are not supported by this provider.');
+      return;
+    }
+
+    if (!this.fileInputEl) {
+      this.fileInputEl = this.containerEl.createEl('input', {
+        cls: 'claudian-image-file-input',
+        attr: {
+          type: 'file',
+          accept: 'image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp',
+          multiple: 'true',
+        },
+      }) as HTMLInputElement;
+      this.fileInputEl.addEventListener('change', () => {
+        void this.handleFileInputChange();
+      });
+    }
+
+    this.fileInputEl.value = '';
+    this.fileInputEl.click();
+  }
+
+  private async handleFileInputChange(): Promise<void> {
+    const files = this.fileInputEl?.files;
+    if (!files) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (this.isImageFile(file) || this.getMediaType(file.name)) {
+        await this.addImageFromFile(file, 'file');
+      }
+    }
   }
 
   private setupDragAndDrop() {
@@ -200,7 +237,7 @@ export class ImageContextManager {
     return IMAGE_EXTENSIONS[ext] || null;
   }
 
-  private async addImageFromFile(file: File, source: 'paste' | 'drop'): Promise<boolean> {
+  private async addImageFromFile(file: File, source: ImageAttachment['source']): Promise<boolean> {
     if (!this.enabled) {
       new Notice('Image attachments are not supported by this provider.');
       return false;

@@ -121,6 +121,10 @@
   color: var(--text-warning);
 }
 
+.claudian-setting-validation-success {
+  color: var(--text-success);
+}
+
 .claudian-settings-cli-path-input {
   width: 100%;
 }

@@ -74,6 +74,45 @@ describe('ImageContextManager', () => {
     });
   });
 
+  describe('pickImages', () => {
+    it('opens a hidden file input when attach is requested', () => {
+      manager.pickImages();
+
+      const input = container.querySelector('.claudian-image-file-input');
+      expect(input).toBeTruthy();
+      expect(input?.getAttribute('type')).toBe('file');
+      expect(input?.getAttribute('multiple')).toBe('true');
+    });
+
+    it('attaches selected images with source file', async () => {
+      const mockBuffer = new ArrayBuffer(4);
+      const file = {
+        name: 'shot.png',
+        type: 'image/png',
+        size: 1024,
+        arrayBuffer: jest.fn().mockResolvedValue(mockBuffer),
+      } as unknown as File;
+
+      manager.pickImages();
+      const input = (manager as any).fileInputEl;
+      input.files = [file];
+      await (manager as any).handleFileInputChange();
+
+      expect(manager.hasImages()).toBe(true);
+      expect(manager.getAttachedImages()[0].source).toBe('file');
+      expect(manager.getAttachedImages()[0].name).toBe('shot.png');
+      expect(callbacks.onImagesChanged).toHaveBeenCalled();
+    });
+
+    it('does not open the picker when image attachments are disabled', () => {
+      manager.setEnabled(false);
+      manager.pickImages();
+
+      expect(container.querySelector('.claudian-image-file-input')).toBeNull();
+      expect(Notice).toHaveBeenCalledWith('Image attachments are not supported by this provider.');
+    });
+  });
+
   describe('getAttachedImages', () => {
     it('should return empty array when no images attached', () => {
       expect(manager.getAttachedImages()).toEqual([]);

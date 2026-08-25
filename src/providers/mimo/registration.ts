@@ -5,7 +5,7 @@ import { MimoTaskResultInterpreter } from './auxiliary/MimoTaskResultInterpreter
 import { MimoTitleGenerationService } from './auxiliary/MimoTitleGenerationService';
 import { MIMO_PROVIDER_CAPABILITIES } from './capabilities';
 import { mimoSettingsReconciler } from './env/MimoSettingsReconciler';
-import { MimoConversationHistoryService } from './history/MimoConversationHistoryService';
+import { mimoHistoryService } from './history/mimoHistoryService';
 import { MimoChatRuntime } from './runtime/MimoChatRuntime';
 import { getMimoProviderSettings } from './settings';
 import { mimoChatUIConfig } from './ui/MimoChatUIConfig';
@@ -19,7 +19,7 @@ export const mimoProviderRegistration: ProviderRegistration = {
   createRuntime: ({ plugin }) => new MimoChatRuntime(plugin),
   createTitleGenerationService: (plugin) => new MimoTitleGenerationService(plugin),
   displayName: 'Connect MiMo API',
-  historyService: new MimoConversationHistoryService(),
+  historyService: mimoHistoryService,
   isEnabled: (settings) => getMimoProviderSettings(settings).enabled,
   settingsReconciler: mimoSettingsReconciler,
   taskResultInterpreter: new MimoTaskResultInterpreter(),

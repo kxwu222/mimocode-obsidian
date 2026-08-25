@@ -2,6 +2,7 @@ import { createMockEl } from '@test/helpers/mockElement';
 
 import type { UsageInfo } from '@/core/types';
 import {
+  AttachmentButton,
   ContextUsageMeter,
   createInputToolbar,
   McpServerSelector,
@@ -156,6 +157,7 @@ function createMockCallbacks(overrides: Record<string, any> = {}) {
     onEffortLevelChange: jest.fn().mockResolvedValue(undefined),
     onServiceTierChange: jest.fn().mockResolvedValue(undefined),
     onPermissionModeChange: jest.fn().mockResolvedValue(undefined),
+    onAttachImage: jest.fn(),
     getSettings: jest.fn().mockReturnValue({
       model: 'sonnet',
       thinkingBudget: 'low',
@@ -251,10 +253,31 @@ describe('ModelSelector', () => {
     expect(callbacks.onModelChange).toHaveBeenCalledWith('opus');
   });
 
-  it('should always show brand color on model button', () => {
+  it('opens the model menu on click, not hover', () => {
+    const container = parentEl.querySelector('.claudian-model-selector');
     const btn = parentEl.querySelector('.claudian-model-btn');
-    expect(btn).toBeTruthy();
-    expect(btn?.hasClass('ready')).toBe(false);
+    expect(container?.hasClass('open')).toBe(false);
+
+    btn?.dispatchEvent('click', { stopPropagation: () => {} });
+    expect(container?.hasClass('open')).toBe(true);
+    expect(btn?.getAttribute('aria-expanded')).toBe('true');
+
+    btn?.dispatchEvent('click', { stopPropagation: () => {} });
+    expect(container?.hasClass('open')).toBe(false);
+  });
+
+  it('closes the model menu after choosing an option', async () => {
+    const container = parentEl.querySelector('.claudian-model-selector');
+    const btn = parentEl.querySelector('.claudian-model-btn');
+    btn?.dispatchEvent('click', { stopPropagation: () => {} });
+
+    const dropdown = parentEl.querySelector('.claudian-model-dropdown');
+    const options = dropdown?.children || [];
+    const opusOption = options.find((o: any) => o.children[0]?.textContent === 'Opus');
+
+    await opusOption?.dispatchEvent('click', { stopPropagation: () => {} });
+    expect(container?.hasClass('open')).toBe(false);
+    expect(callbacks.onModelChange).toHaveBeenCalledWith('opus');
   });
 
   it('should use custom models from environment variables', () => {
@@ -1023,6 +1046,13 @@ describe('ContextUsageMeter', () => {
     const container = parentEl.querySelector('.claudian-context-meter');
     expect(container?.getAttribute('data-tooltip')).toBe('160k / 200k');
   });
+
+  it('stays hidden when visibility is turned off', () => {
+    meter.setVisible(false);
+    meter.update(makeUsage({ contextTokens: 50000, contextWindow: 200000, percentage: 25 }));
+    const container = parentEl.querySelector('.claudian-context-meter');
+    expect(container?.style.display).toBe('none');
+  });
 });
 
 describe('McpServerSelector - toggle and badges', () => {
@@ -1116,6 +1146,7 @@ describe('createInputToolbar', () => {
     const toolbar = createInputToolbar(parentEl, callbacks);
 
     expect(toolbar.modelSelector).toBeInstanceOf(ModelSelector);
+    expect(toolbar.attachmentButton).toBeInstanceOf(AttachmentButton);
     expect(toolbar.modeSelector).toBeInstanceOf(ModeSelector);
     expect(toolbar.thinkingBudgetSelector).toBeInstanceOf(ThinkingBudgetSelector);
     expect(toolbar.contextUsageMeter).toBeInstanceOf(ContextUsageMeter);
@@ -1135,5 +1166,38 @@ describe('createInputToolbar', () => {
     expect(permissionIndex).toBeGreaterThanOrEqual(0);
     expect(modeIndex).toBeGreaterThan(permissionIndex);
     expect(modeIndex).toBe(parentEl.children.length - 1);
+  });
+
+  it('should place the attach button immediately after the model selector', () => {
+    const parentEl = createMockEl();
+    const callbacks = createMockCallbacks();
+
+    createInputToolbar(parentEl, callbacks);
+
+    const modelIndex = parentEl.children.findIndex((child: any) => child.hasClass('claudian-model-selector'));
+    const attachIndex = parentEl.children.findIndex((child: any) => child.hasClass('claudian-attach-btn'));
+    expect(modelIndex).toBe(0);
+    expect(attachIndex).toBe(1);
+  });
+});
+
+describe('AttachmentButton', () => {
+  it('calls onAttachImage when clicked', () => {
+    const parentEl = createMockEl();
+    const callbacks = createMockCallbacks();
+    new AttachmentButton(parentEl, callbacks);
+
+    const button = parentEl.querySelector('.claudian-attach-btn');
+    expect(button?.getAttribute('aria-label')).toBe('Attach image');
+    button!.click();
+    expect(callbacks.onAttachImage).toHaveBeenCalled();
+  });
+
+  it('hides when setVisible(false)', () => {
+    const parentEl = createMockEl();
+    const button = new AttachmentButton(parentEl, createMockCallbacks());
+    const el = parentEl.querySelector('.claudian-attach-btn');
+    button.setVisible(false);
+    expect(el?.hasClass('claudian-hidden')).toBe(true);
   });
 });
