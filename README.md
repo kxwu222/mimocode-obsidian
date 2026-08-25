@@ -5,8 +5,6 @@
 
 An Obsidian plugin that brings [Xiaomi MiMo](https://mimo.mi.com) into your vault sidebar as a chat assistant. Paste an API key and start talking — no CLI, no extra runtime.
 
-![MiMo chat sidebar naming the open Daily.md note](docs/sidebar.png)
-
 ## Features
 
 **Chat sidebar** — Open a streaming chat panel from the ribbon or command palette. Ask questions, think through a note, or bounce ideas while you write. Threads are saved locally and come back when you reopen Obsidian.
