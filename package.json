@@ -1,6 +1,6 @@
 {
   "name": "mimocode",
-  "version": "1.1.4",
+  "version": "1.1.7",
   "description": "Xiaomi MiMo chat in the Obsidian sidebar — API key only, no CLI",
   "main": "main.js",
   "engines": {
