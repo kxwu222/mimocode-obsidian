@@ -23,6 +23,7 @@ import type ClaudianPlugin from '../../../main';
 import { appendBrowserContext } from '../../../utils/browser';
 import { appendCanvasContext } from '../../../utils/canvas';
 import { appendCurrentNote } from '../../../utils/context';
+import { getLocalIsoDate, getTodayDate } from '../../../utils/date';
 import { appendEditorContext } from '../../../utils/editor';
 import { MIMO_PROVIDER_CAPABILITIES } from '../capabilities';
 import { getMimoBaseUrl, getMimoProviderSettings, isMimoModel } from '../settings';
@@ -42,12 +43,17 @@ import {
 
 const MAX_VAULT_TOOL_ROUNDS = 8;
 
-const MIMO_SYSTEM_PROMPT =
-  'You are MiMo, an AI assistant developed by Xiaomi, working inside the user\'s Obsidian vault. '
-  + 'When a message includes <linked_note> or <attached_note> blocks, those blocks contain the full note text. '
-  + 'Use that text directly. You can browse and change the vault with the Read, LS, Glob, Grep, Write, Edit, and Delete tools. '
-  + 'Use those tools when the user asks about notes you have not been given, or when they ask you to create, update, or trash notes. '
-  + 'Delete moves a note to Obsidian trash; it is not a permanent delete. Stay inside the vault and only touch text notes.';
+export function buildMimoSystemPrompt(): string {
+  const iso = getLocalIsoDate();
+  return 'You are MiMo, an AI assistant developed by Xiaomi, working inside the user\'s Obsidian vault. '
+    + `Today is ${getTodayDate()}. For daily notes and dated filenames, use ${iso}. Do not invent an older date. `
+    + 'When a message includes <linked_note> or <attached_note> blocks, those blocks contain the full note text. '
+    + 'Use that text directly. You can browse and change the vault with the Read, LS, Glob, Grep, Write, Edit, and Delete tools. '
+    + 'Use those tools when the user asks about notes you have not been given, or when they ask you to create, update, or trash notes. '
+    + 'When you mention a vault note in your reply, write it as an Obsidian wikilink such as [[folder/note.md]] so it is clickable. '
+    + 'Do not wrap those wikilinks in backticks. Delete moves a note to Obsidian trash; it is not a permanent delete. '
+    + 'Stay inside the vault and only touch text notes.';
+}
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
@@ -136,7 +142,7 @@ export class MimoChatRuntime implements ChatRuntime {
     const { signal } = this.abortController;
 
     const prompt = await this.applyVaultNoteContext(turn);
-    const messages = buildMimoMessages({ ...turn, prompt }, conversationHistory, MIMO_SYSTEM_PROMPT);
+    const messages = buildMimoMessages({ ...turn, prompt }, conversationHistory, buildMimoSystemPrompt());
 
     const rawModel = typeof settings.model === 'string' ? settings.model.trim() : '';
     const selectedModel = rawModel && isMimoModel(rawModel) ? rawModel : mimoSettings.model;

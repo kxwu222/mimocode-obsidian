@@ -286,7 +286,7 @@ async function grepVaultFiles(
       continue;
     }
     const snippet = firstMatchingLine(raw, matcher);
-    hits.push(snippet ? `${path}: ${snippet}` : path);
+    hits.push(snippet ? `${formatVaultWikilink(path)}: ${snippet}` : formatVaultWikilink(path));
   }
 
   if (hits.length === 0) {
@@ -317,7 +317,9 @@ async function writeVaultFile(
 
   const outcome = await ctx.writeNote(resolved.path, contents);
   return {
-    content: outcome === 'created' ? `Created ${resolved.path}` : `Updated ${resolved.path}`,
+    content: outcome === 'created'
+      ? `Created ${formatVaultWikilink(resolved.path)}`
+      : `Updated ${formatVaultWikilink(resolved.path)}`,
     isError: false,
   };
 }
@@ -376,7 +378,7 @@ async function editVaultFile(
 
   await ctx.writeNote(resolved.path, updated);
   return {
-    content: `Updated ${resolved.path} (${replacements} replacement${replacements === 1 ? '' : 's'}).`,
+    content: `Updated ${formatVaultWikilink(resolved.path)} (${replacements} replacement${replacements === 1 ? '' : 's'}).`,
     isError: false,
   };
 }
@@ -394,7 +396,7 @@ async function deleteVaultFile(
   if (!trashed) {
     return { content: `File not found: ${resolved.path}`, isError: true };
   }
-  return { content: `Moved ${resolved.path} to trash.`, isError: false };
+  return { content: `Moved ${formatVaultWikilink(resolved.path)} to trash.`, isError: false };
 }
 
 function readContents(input: Record<string, unknown>): string | null {
@@ -465,7 +467,11 @@ function formatPathList(paths: string[], heading: string): string {
   const truncated = paths.length >= MAX_VAULT_LIST_RESULTS
     ? `\n[truncated to ${MAX_VAULT_LIST_RESULTS}]`
     : '';
-  return `${heading} (${paths.length}):\n${paths.join('\n')}${truncated}`;
+  return `${heading} (${paths.length}):\n${paths.map(formatVaultWikilink).join('\n')}${truncated}`;
+}
+
+export function formatVaultWikilink(path: string): string {
+  return `[[${path}]]`;
 }
 
 export function globToRegExp(pattern: string): RegExp {

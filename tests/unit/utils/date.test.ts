@@ -1,4 +1,10 @@
-import { formatDurationMmSs, getTodayDate } from '../../../src/utils/date';
+import { formatDurationMmSs, getLocalIsoDate, getTodayDate } from '../../../src/utils/date';
+
+describe('getLocalIsoDate', () => {
+  it('returns a local YYYY-MM-DD date', () => {
+    expect(getLocalIsoDate(new Date(2026, 7, 26))).toBe('2026-08-26');
+  });
+});
 
 describe('getTodayDate', () => {
   it('returns readable date with ISO suffix', () => {
@@ -21,8 +27,7 @@ describe('getTodayDate', () => {
     const result = getTodayDate();
     const isoMatch = result.match(/\((\d{4}-\d{2}-\d{2})\)/);
     expect(isoMatch).not.toBeNull();
-    const today = new Date().toISOString().split('T')[0];
-    expect(isoMatch![1]).toBe(today);
+    expect(isoMatch![1]).toBe(getLocalIsoDate());
   });
 });
 

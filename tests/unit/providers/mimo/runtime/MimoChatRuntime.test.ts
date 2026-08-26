@@ -3,6 +3,7 @@ import { requestUrl, TFile } from 'obsidian';
 import type { StreamChunk } from '@/core/types';
 import type ClaudianPlugin from '@/main';
 import { MimoChatRuntime } from '@/providers/mimo/runtime/MimoChatRuntime';
+import { getLocalIsoDate } from '@/utils/date';
 
 const requestUrlMock = requestUrl as jest.Mock;
 
@@ -128,6 +129,9 @@ describe('MimoChatRuntime vault tools', () => {
     const chunks = await collect(runtime, 'What does hello.md say?');
 
     expect(JSON.parse(requestUrlMock.mock.calls[0][0].body).tools.length).toBeGreaterThan(0);
+    const systemPrompt = JSON.parse(requestUrlMock.mock.calls[0][0].body).messages[0].content as string;
+    expect(systemPrompt).toContain(getLocalIsoDate());
+    expect(systemPrompt).toContain('[[folder/note.md]]');
     expect(chunks).toEqual(expect.arrayContaining([
       { type: 'tool_use', id: 'call_read', name: 'Read', input: { file_path: 'notes/hello.md' } },
       {
@@ -194,7 +198,7 @@ describe('MimoChatRuntime vault tools', () => {
       {
         type: 'tool_result',
         id: 'call_write',
-        content: 'Created notes/new.md',
+        content: 'Created [[notes/new.md]]',
         isError: false,
       },
       { type: 'text', content: 'Created the note.' },
@@ -250,7 +254,7 @@ describe('MimoChatRuntime vault tools', () => {
       {
         type: 'tool_result',
         id: 'call_delete',
-        content: 'Moved notes/hello.md to trash.',
+        content: 'Moved [[notes/hello.md]] to trash.',
         isError: false,
       },
       { type: 'text', content: 'Trashed the note.' },

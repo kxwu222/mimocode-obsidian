@@ -38,22 +38,22 @@ describe('executeVaultTool', () => {
   it('lists notes and skips blocked config files', async () => {
     const result = await executeVaultTool(TOOL_LS, {}, ctx);
     expect(result.isError).toBe(false);
-    expect(result.content).toContain('notes/daily.md');
-    expect(result.content).toContain('inbox.md');
+    expect(result.content).toContain('[[notes/daily.md]]');
+    expect(result.content).toContain('[[inbox.md]]');
     expect(result.content).not.toContain('workspace.json');
   });
 
   it('lists a folder', async () => {
     const result = await executeVaultTool(TOOL_LS, { path: 'notes/projects' }, ctx);
-    expect(result.content).toContain('notes/projects/alpha.md');
+    expect(result.content).toContain('[[notes/projects/alpha.md]]');
     expect(result.content).not.toContain('inbox.md');
   });
 
   it('globs note paths', async () => {
     expect(globToRegExp('notes/**/*.md').test('notes/projects/alpha.md')).toBe(true);
     const result = await executeVaultTool(TOOL_GLOB, { pattern: 'notes/**/*.md' }, ctx);
-    expect(result.content).toContain('notes/daily.md');
-    expect(result.content).toContain('notes/projects/alpha.md');
+    expect(result.content).toContain('[[notes/daily.md]]');
+    expect(result.content).toContain('[[notes/projects/alpha.md]]');
     expect(result.content).not.toContain('inbox.md');
   });
 
@@ -74,8 +74,8 @@ describe('executeVaultTool', () => {
   it('searches note contents', async () => {
     const result = await executeVaultTool(TOOL_GREP, { pattern: 'alpha' }, ctx);
     expect(result.isError).toBe(false);
-    expect(result.content).toContain('notes/projects/alpha.md');
-    expect(result.content).toContain('inbox.md');
+    expect(result.content).toContain('[[notes/projects/alpha.md]]');
+    expect(result.content).toContain('[[inbox.md]]');
   });
 
   it('creates and overwrites notes', async () => {
@@ -86,14 +86,14 @@ describe('executeVaultTool', () => {
       file_path: 'notes/new.md',
       contents: 'hello',
     }, writable);
-    expect(created).toEqual({ content: 'Created notes/new.md', isError: false });
+    expect(created).toEqual({ content: 'Created [[notes/new.md]]', isError: false });
     expect(files['notes/new.md']).toBe('hello');
 
     const updated = await executeVaultTool(TOOL_WRITE, {
       file_path: 'notes/daily.md',
       content: 'new body',
     }, writable);
-    expect(updated).toEqual({ content: 'Updated notes/daily.md', isError: false });
+    expect(updated).toEqual({ content: 'Updated [[notes/daily.md]]', isError: false });
     expect(files['notes/daily.md']).toBe('new body');
   });
 
@@ -157,7 +157,7 @@ describe('executeVaultTool', () => {
       replace_all: true,
     }, editable);
     expect(replaced).toEqual({
-      content: 'Updated notes/daily.md (2 replacements).',
+      content: 'Updated [[notes/daily.md]] (2 replacements).',
       isError: false,
     });
     expect(files['notes/daily.md']).toBe('x gamma x');
@@ -184,7 +184,7 @@ describe('executeVaultTool', () => {
     const deletable = createContext(files);
 
     const trashed = await executeVaultTool(TOOL_DELETE, { file_path: 'inbox.md' }, deletable);
-    expect(trashed).toEqual({ content: 'Moved inbox.md to trash.', isError: false });
+    expect(trashed).toEqual({ content: 'Moved [[inbox.md]] to trash.', isError: false });
     expect(files).toEqual({});
 
     const missing = await executeVaultTool(TOOL_DELETE, { file_path: 'inbox.md' }, deletable);
