@@ -45,8 +45,9 @@ const MAX_VAULT_TOOL_ROUNDS = 8;
 const MIMO_SYSTEM_PROMPT =
   'You are MiMo, an AI assistant developed by Xiaomi, working inside the user\'s Obsidian vault. '
   + 'When a message includes <linked_note> or <attached_note> blocks, those blocks contain the full note text. '
-  + 'Use that text directly. You can also browse the vault with the Read, LS, Glob, and Grep tools. '
-  + 'Use those tools when the user asks about notes you have not been given. You cannot write, edit, or delete files.';
+  + 'Use that text directly. You can browse and change the vault with the Read, LS, Glob, Grep, Write, Edit, and Delete tools. '
+  + 'Use those tools when the user asks about notes you have not been given, or when they ask you to create, update, or trash notes. '
+  + 'Delete moves a note to Obsidian trash; it is not a permanent delete. Stay inside the vault and only touch text notes.';
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
@@ -362,7 +363,51 @@ export class MimoChatRuntime implements ChatRuntime {
       configDir: this.plugin.app.vault.configDir,
       listMarkdownFiles: () => this.plugin.app.vault.getMarkdownFiles().map((file) => ({ path: file.path })),
       readNote: (path) => this.readVaultNote(path),
+      writeNote: (path, contents) => this.writeVaultNote(path, contents),
+      trashNote: (path) => this.trashVaultNote(path),
     };
+  }
+
+  private async writeVaultNote(path: string, contents: string): Promise<'created' | 'updated'> {
+    await this.ensureVaultParentFolders(path);
+    const existing = this.plugin.app.vault.getAbstractFileByPath(path);
+    if (existing instanceof TFile) {
+      await this.plugin.app.vault.modify(existing, contents);
+      return 'updated';
+    }
+    if (existing) {
+      throw new Error(`Cannot write ${path}: a folder already exists there.`);
+    }
+    await this.plugin.app.vault.create(path, contents);
+    return 'created';
+  }
+
+  private async trashVaultNote(path: string): Promise<boolean> {
+    const file = this.plugin.app.vault.getAbstractFileByPath(path);
+    if (!(file instanceof TFile)) {
+      return false;
+    }
+
+    await this.plugin.app.fileManager.trashFile(file);
+    return true;
+  }
+
+  private async ensureVaultParentFolders(path: string): Promise<void> {
+    const segments = path.split('/').slice(0, -1);
+    let acc = '';
+    for (const segment of segments) {
+      if (!segment) {
+        continue;
+      }
+      acc = acc ? `${acc}/${segment}` : segment;
+      const existing = this.plugin.app.vault.getAbstractFileByPath(acc);
+      if (existing instanceof TFile) {
+        throw new Error(`Cannot create folder ${acc}: a file already exists there.`);
+      }
+      if (!existing) {
+        await this.plugin.app.vault.createFolder(acc);
+      }
+    }
   }
 
   cancel(): void {

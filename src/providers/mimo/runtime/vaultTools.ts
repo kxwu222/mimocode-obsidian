@@ -1,4 +1,4 @@
-import { TOOL_GLOB, TOOL_GREP, TOOL_LS, TOOL_READ } from '../../../core/tools/toolNames';
+import { TOOL_EDIT, TOOL_GLOB, TOOL_GREP, TOOL_LS, TOOL_READ, TOOL_WRITE } from '../../../core/tools/toolNames';
 import type { OpenAIToolDef } from './McpToolRunner';
 import {
   isBlockedVaultNotePath,
@@ -6,9 +6,21 @@ import {
   MAX_CHARS_PER_VAULT_NOTE,
 } from './vaultNoteContext';
 
+export const TOOL_DELETE = 'Delete' as const;
+
 export const MAX_VAULT_LIST_RESULTS = 200;
 export const MAX_VAULT_GREP_MATCHES = 20;
 export const MAX_VAULT_GREP_SCAN = 400;
+
+const MIMO_VAULT_TOOL_NAMES = new Set<string>([
+  TOOL_LS,
+  TOOL_GLOB,
+  TOOL_READ,
+  TOOL_GREP,
+  TOOL_WRITE,
+  TOOL_EDIT,
+  TOOL_DELETE,
+]);
 
 export interface VaultToolFile {
   path: string;
@@ -18,6 +30,8 @@ export interface VaultToolContext {
   configDir: string;
   listMarkdownFiles: () => VaultToolFile[];
   readNote: (path: string) => Promise<string | null>;
+  writeNote: (path: string, contents: string) => Promise<'created' | 'updated'>;
+  trashNote: (path: string) => Promise<boolean>;
 }
 
 export const MIMO_VAULT_TOOLS: OpenAIToolDef[] = [
@@ -92,10 +106,77 @@ export const MIMO_VAULT_TOOLS: OpenAIToolDef[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: TOOL_WRITE,
+      description: 'Create or overwrite a vault note. Use this for new files or full file replacement.',
+      parameters: {
+        type: 'object',
+        properties: {
+          file_path: {
+            type: 'string',
+            description: 'Vault-relative path, for example notes/daily.md.',
+          },
+          contents: {
+            type: 'string',
+            description: 'Full note text to write.',
+          },
+        },
+        required: ['file_path', 'contents'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: TOOL_EDIT,
+      description: 'Replace text inside an existing vault note. Fails if old_string is missing or not unique unless replace_all is true.',
+      parameters: {
+        type: 'object',
+        properties: {
+          file_path: {
+            type: 'string',
+            description: 'Vault-relative path of the note to edit.',
+          },
+          old_string: {
+            type: 'string',
+            description: 'Exact text to find.',
+          },
+          new_string: {
+            type: 'string',
+            description: 'Replacement text.',
+          },
+          replace_all: {
+            type: 'boolean',
+            description: 'Replace every occurrence. Defaults to false.',
+          },
+        },
+        required: ['file_path', 'old_string', 'new_string'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: TOOL_DELETE,
+      description: 'Move a vault note to Obsidian trash. This is not a permanent delete.',
+      parameters: {
+        type: 'object',
+        properties: {
+          file_path: {
+            type: 'string',
+            description: 'Vault-relative path of the note to trash.',
+          },
+        },
+        required: ['file_path'],
+      },
+    },
+  },
 ];
 
 export function isMimoVaultTool(name: string): boolean {
-  return name === TOOL_LS || name === TOOL_GLOB || name === TOOL_READ || name === TOOL_GREP;
+  return MIMO_VAULT_TOOL_NAMES.has(name);
 }
 
 export async function executeVaultTool(
@@ -113,6 +194,12 @@ export async function executeVaultTool(
         return await readVaultFile(readString(input.file_path), ctx);
       case TOOL_GREP:
         return await grepVaultFiles(readString(input.pattern), readString(input.path), ctx);
+      case TOOL_WRITE:
+        return await writeVaultFile(input, ctx);
+      case TOOL_EDIT:
+        return await editVaultFile(input, ctx);
+      case TOOL_DELETE:
+        return await deleteVaultFile(readString(input.file_path), ctx);
       default:
         return { content: `Unknown vault tool: ${name}`, isError: true };
     }
@@ -206,6 +293,147 @@ async function grepVaultFiles(
     return { content: `No matches for ${pattern}.`, isError: false };
   }
   return { content: hits.join('\n'), isError: false };
+}
+
+async function writeVaultFile(
+  input: Record<string, unknown>,
+  ctx: VaultToolContext,
+): Promise<{ content: string; isError: boolean }> {
+  const resolved = resolveMutableNotePath(readString(input.file_path), ctx, 'write');
+  if ('error' in resolved) {
+    return { content: resolved.error, isError: true };
+  }
+
+  const contents = readContents(input);
+  if (contents === null) {
+    return { content: 'contents is required.', isError: true };
+  }
+  if (contents.length > MAX_CHARS_PER_VAULT_NOTE) {
+    return {
+      content: `Contents exceed the ${MAX_CHARS_PER_VAULT_NOTE} character limit.`,
+      isError: true,
+    };
+  }
+
+  const outcome = await ctx.writeNote(resolved.path, contents);
+  return {
+    content: outcome === 'created' ? `Created ${resolved.path}` : `Updated ${resolved.path}`,
+    isError: false,
+  };
+}
+
+async function editVaultFile(
+  input: Record<string, unknown>,
+  ctx: VaultToolContext,
+): Promise<{ content: string; isError: boolean }> {
+  const resolved = resolveMutableNotePath(readString(input.file_path), ctx, 'edit');
+  if ('error' in resolved) {
+    return { content: resolved.error, isError: true };
+  }
+
+  const oldString = typeof input.old_string === 'string' ? input.old_string : null;
+  const newString = typeof input.new_string === 'string' ? input.new_string : null;
+  if (oldString === null || oldString.length === 0) {
+    return { content: 'old_string is required.', isError: true };
+  }
+  if (newString === null) {
+    return { content: 'new_string is required.', isError: true };
+  }
+
+  const raw = await ctx.readNote(resolved.path);
+  if (raw === null) {
+    return { content: `File not found: ${resolved.path}`, isError: true };
+  }
+
+  const replaceAll = input.replace_all === true;
+  const first = raw.indexOf(oldString);
+  if (first < 0) {
+    return { content: `old_string not found in ${resolved.path}`, isError: true };
+  }
+
+  let updated: string;
+  let replacements = 1;
+  if (replaceAll) {
+    replacements = countOccurrences(raw, oldString);
+    updated = raw.split(oldString).join(newString);
+  } else {
+    const second = raw.indexOf(oldString, first + oldString.length);
+    if (second >= 0) {
+      return {
+        content: 'old_string is not unique. Use replace_all or a larger unique snippet.',
+        isError: true,
+      };
+    }
+    updated = raw.slice(0, first) + newString + raw.slice(first + oldString.length);
+  }
+
+  if (updated.length > MAX_CHARS_PER_VAULT_NOTE) {
+    return {
+      content: `Contents exceed the ${MAX_CHARS_PER_VAULT_NOTE} character limit.`,
+      isError: true,
+    };
+  }
+
+  await ctx.writeNote(resolved.path, updated);
+  return {
+    content: `Updated ${resolved.path} (${replacements} replacement${replacements === 1 ? '' : 's'}).`,
+    isError: false,
+  };
+}
+
+async function deleteVaultFile(
+  filePath: string,
+  ctx: VaultToolContext,
+): Promise<{ content: string; isError: boolean }> {
+  const resolved = resolveMutableNotePath(filePath, ctx, 'delete');
+  if ('error' in resolved) {
+    return { content: resolved.error, isError: true };
+  }
+
+  const trashed = await ctx.trashNote(resolved.path);
+  if (!trashed) {
+    return { content: `File not found: ${resolved.path}`, isError: true };
+  }
+  return { content: `Moved ${resolved.path} to trash.`, isError: false };
+}
+
+function readContents(input: Record<string, unknown>): string | null {
+  if (typeof input.contents === 'string') {
+    return input.contents;
+  }
+  if (typeof input.content === 'string') {
+    return input.content;
+  }
+  return null;
+}
+
+function resolveMutableNotePath(
+  filePath: string,
+  ctx: VaultToolContext,
+  verb: 'write' | 'edit' | 'delete',
+): { path: string } | { error: string } {
+  const path = normalizeVaultRelPath(filePath);
+  if (!path) {
+    return { error: 'A vault-relative file_path is required.' };
+  }
+  if (!isVaultNoteTextPath(path) || isBlockedVaultNotePath(path, [ctx.configDir])) {
+    return { error: `Cannot ${verb} ${path}.` };
+  }
+  return { path };
+}
+
+function countOccurrences(haystack: string, needle: string): number {
+  let count = 0;
+  let index = 0;
+  while (index <= haystack.length - needle.length) {
+    const found = haystack.indexOf(needle, index);
+    if (found < 0) {
+      break;
+    }
+    count += 1;
+    index = found + needle.length;
+  }
+  return count;
 }
 
 function filterVaultFiles(

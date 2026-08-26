@@ -15,7 +15,7 @@ An Obsidian plugin that brings [Xiaomi MiMo](https://mimo.mi.com) into your vaul
 
 **Image attachments** — Drop or paste jpeg, png, gif, or webp into the *current* message. Images stay with the chat on disk so you can reopen the thread after a restart.
 
-**Editor and vault context** — The active note, `@`-mentioned notes, and any editor / canvas / browser selection are sent with the turn. MiMo can also list, search, and read other notes with built-in vault tools. It cannot write or delete files. Obsidian Sync is not required.
+**Editor and vault context** — The active note, `@`-mentioned notes, and any editor / canvas / browser selection are sent with the turn. MiMo can list, search, read, write, edit, and trash notes with built-in vault tools. Delete sends notes to Obsidian trash. Obsidian Sync is not required.
 
 ## Requirements
 
