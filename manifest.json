@@ -1,7 +1,7 @@
 {
   "id": "mimocode",
   "name": "MiMo",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "minAppVersion": "1.7.2",
   "description": "Chat with Xiaomi MiMo from your vault sidebar. API-key chat, inline edit with a diff preview, multi-tab sessions, and image attachments.",
   "author": "kxwu222",
