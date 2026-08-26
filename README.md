@@ -3,7 +3,7 @@
 ![License](https://img.shields.io/github/license/kxwu222/mimocode-obsidian)
 ![GitHub release](https://img.shields.io/github/v/release/kxwu222/mimocode-obsidian)
 
-An Obsidian plugin that brings [Xiaomi MiMo](https://mimo.mi.com) into your vault sidebar as a chat assistant. Paste an API key and start talking — no CLI, no extra runtime.
+An Obsidian plugin that brings [Xiaomi MiMo](https://mimo.mi.com) into your vault sidebar as a chat assistant. Paste an API key and start talking, no CLI, no extra runtime.
 
 ## Features
 
@@ -15,7 +15,7 @@ An Obsidian plugin that brings [Xiaomi MiMo](https://mimo.mi.com) into your vaul
 
 **Image attachments**: Drop or paste jpeg, png, gif, or webp into the *current* message. Images stay with the chat on disk so you can reopen the thread after a restart.
 
-**Editor and vault context**: The active note, `@`-mentioned notes, and any editor / canvas / browser selection are sent with the turn. MiMo can also list, search, read, write, and edit notes, and move them to Obsidian trash, using built-in vault tools (LS, Glob, Grep, Read, Write, Edit, Delete). You should see those tool names in the thread when it uses them. Obsidian Sync is not required.
+**Editor and vault context**: The active note, `@`-mentioned notes, and any editor / canvas / browser selection are sent with the turn. MiMo can also list, search, read, write, and edit notes, and move them to Obsidian trash, using built-in vault tools (LS, Glob, Grep, Read, Write, Edit, Delete).
 
 ## Requirements
 
