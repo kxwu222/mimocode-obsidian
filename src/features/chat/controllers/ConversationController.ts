@@ -713,7 +713,7 @@ export class ConversationController {
 
       // Show regenerate button if title generation failed, or loading indicator if pending
       if (conv.titleGenerationStatus === 'pending') {
-        const loadingEl = actions.createEl('span', { cls: 'claudian-action-btn claudian-action-loading' });
+        const loadingEl = actions.createSpan({ cls: 'claudian-action-btn claudian-action-loading' });
         setIcon(loadingEl, 'loader-2');
         loadingEl.setAttribute('aria-label', 'Generating title...');
       } else if (conv.titleGenerationStatus === 'failed') {
@@ -775,13 +775,13 @@ export class ConversationController {
     container: HTMLElement,
     options: HistoryRenderOptions,
   ): HTMLElement {
-    const existingList = container.querySelector('.claudian-history-list');
+    const existingList = container.querySelector<HTMLElement>('.claudian-history-list');
     if (existingList) {
-      const search = container.querySelector('.claudian-history-search') as HTMLInputElement | null;
+      const search = container.querySelector<HTMLInputElement>('.claudian-history-search');
       if (search && search.value !== this.historyFilterQuery) {
         search.value = this.historyFilterQuery;
       }
-      return existingList as HTMLElement;
+      return existingList;
     }
 
     container.empty();
@@ -795,7 +795,7 @@ export class ConversationController {
         placeholder: 'Filter chats',
         'aria-label': 'Filter chats',
       },
-    }) as HTMLInputElement;
+    });
     search.value = this.historyFilterQuery;
     search.addEventListener('input', () => {
       this.historyFilterQuery = search.value;
@@ -962,7 +962,7 @@ export class ConversationController {
     const titleEl = item.querySelector('.claudian-history-item-title') as HTMLElement;
     if (!titleEl) return;
 
-    const input = (item.ownerDocument ?? window.document).createElement('input');
+    const input = createEl('input');
     input.type = 'text';
     input.className = 'claudian-rename-input';
     input.value = currentTitle;

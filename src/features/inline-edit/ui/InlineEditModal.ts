@@ -466,26 +466,26 @@ class InlineEditController {
 
   createInputDOM(): HTMLElement {
     const ownerDocument = this.getOwnerDocument();
-    const container = ownerDocument.createElement('div');
+    const container = createDiv();
     container.className = 'claudian-inline-input-container';
     this.containerEl = container;
 
-    this.agentReplyEl = ownerDocument.createElement('div');
+    this.agentReplyEl = createDiv();
     this.agentReplyEl.className = 'claudian-inline-agent-reply claudian-hidden';
     container.appendChild(this.agentReplyEl);
 
-    const inputWrap = ownerDocument.createElement('div');
+    const inputWrap = createDiv();
     inputWrap.className = 'claudian-inline-input-wrap';
     container.appendChild(inputWrap);
 
-    this.inputEl = ownerDocument.createElement('input');
+    this.inputEl = createEl('input');
     this.inputEl.type = 'text';
     this.inputEl.className = 'claudian-inline-input';
     this.inputEl.placeholder = this.mode === 'cursor' ? 'Insert instructions...' : 'Edit instructions...';
     this.inputEl.spellcheck = false;
     inputWrap.appendChild(this.inputEl);
 
-    this.spinnerEl = ownerDocument.createElement('div');
+    this.spinnerEl = createDiv();
     this.spinnerEl.className = 'claudian-inline-spinner claudian-hidden';
     inputWrap.appendChild(this.spinnerEl);
 
@@ -533,15 +533,14 @@ class InlineEditController {
   }
 
   createDiffPreviewDOM(diffOps: DiffOp[]): HTMLElement {
-    const ownerDocument = this.getOwnerDocument();
-    const previewEl = ownerDocument.createElement('div');
+    const previewEl = createDiv();
     previewEl.className = 'claudian-inline-diff-preview';
 
-    const bodyEl = ownerDocument.createElement('div');
+    const bodyEl = createDiv();
     bodyEl.className = 'claudian-inline-diff-preview-body markdown-rendered';
     previewEl.appendChild(bodyEl);
 
-    const actionsEl = ownerDocument.createElement('div');
+    const actionsEl = createDiv();
     actionsEl.className = 'claudian-inline-preview-actions';
     actionsEl.appendChild(this.createPreviewActionButton('Reject', 'reject', () => this.reject()));
     actionsEl.appendChild(this.createPreviewActionButton('Accept', 'accept', () => this.accept()));
@@ -556,8 +555,7 @@ class InlineEditController {
     variant: 'accept' | 'reject',
     onClick: () => void
   ): HTMLButtonElement {
-    const ownerDocument = this.getOwnerDocument();
-    const button = ownerDocument.createElement('button');
+    const button = createEl('button');
     button.type = 'button';
     button.className = `claudian-inline-preview-action ${variant}`;
     button.textContent = label;
@@ -586,7 +584,7 @@ class InlineEditController {
     for (const document of buildMarkdownDiffDocuments(diffOps)) {
       if (!document.markdown) continue;
 
-      const opEl = this.getOwnerDocument().createElement('div');
+      const opEl = createDiv();
       opEl.className = `claudian-diff-block ${getDiffBlockClass(document.type)}`;
       container.appendChild(opEl);
       await this.renderMarkdownPreview(opEl, document.markdown);
@@ -676,7 +674,7 @@ class InlineEditController {
     if (!this.agentReplyEl || !this.containerEl) return;
     const replyEl = this.agentReplyEl;
     const renderVersion = ++this.agentReplyRenderVersion;
-    const renderedEl = this.getOwnerDocument().createElement('div');
+    const renderedEl = createDiv();
 
     replyEl.removeClass('claudian-hidden');
     replyEl.empty();

@@ -1,4 +1,4 @@
-import { MarkdownView, TFile } from 'obsidian';
+import { MarkdownView, requestUrl, TFile } from 'obsidian';
 
 import type { ProviderCapabilities } from '../../../core/providers/types';
 import type { ChatRuntime } from '../../../core/runtime/ChatRuntime';
@@ -36,6 +36,23 @@ const MIMO_SYSTEM_PROMPT =
   'You are MiMo, an AI assistant developed by Xiaomi, working inside the user\'s Obsidian vault. '
   + 'When a message includes <linked_note> or <attached_note> blocks, those blocks contain the full note text. '
   + 'Use that text directly. You cannot read or write other vault files unless the user pastes them.';
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
+function abortAsError(signal: AbortSignal): Promise<never> {
+  return new Promise((_, reject) => {
+    const abort = (): void => {
+      reject(new DOMException('Aborted', 'AbortError'));
+    };
+    if (signal.aborted) {
+      abort();
+      return;
+    }
+    signal.addEventListener('abort', abort, { once: true });
+  });
+}
 
 export class MimoChatRuntime implements ChatRuntime {
   readonly providerId = 'mimo' as const;
@@ -189,20 +206,39 @@ export class MimoChatRuntime implements ChatRuntime {
       max_completion_tokens: 32768,
     };
 
-    let response: Response;
+    let sseText: string;
     try {
-      // requestUrl does not support streaming responses; fetch is required for SSE
-      response = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'api-key': apiKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-        signal,
-      });
-    } catch (error) {
+      const response = await Promise.race([
+        requestUrl({
+          url: `${baseUrl}/chat/completions`,
+          method: 'POST',
+          headers: {
+            'api-key': apiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+          throw: false,
+        }),
+        abortAsError(signal),
+      ]);
+
       if (signal.aborted) {
+        yield { type: 'done' };
+        return;
+      }
+
+      if (response.status < 200 || response.status >= 300) {
+        yield {
+          type: 'error',
+          content: `MiMo API error ${response.status}: ${response.text || ''}`.trim(),
+        };
+        yield { type: 'done' };
+        return;
+      }
+
+      sseText = response.text ?? '';
+    } catch (error) {
+      if (signal.aborted || isAbortError(error)) {
         yield { type: 'done' };
         return;
       }
@@ -212,89 +248,59 @@ export class MimoChatRuntime implements ChatRuntime {
       return;
     }
 
-    if (!response.ok) {
-      let errBody = '';
-      try {
-        errBody = await response.text();
-      } catch {
-        // ignore
-      }
-      yield {
-        type: 'error',
-        content: `MiMo API error ${response.status}: ${errBody || response.statusText}`,
-      };
-      yield { type: 'done' };
-      return;
-    }
-
-    const reader = response.body?.getReader();
-    if (!reader) {
+    if (!sseText) {
       yield { type: 'error', content: 'MiMo response body is empty.' };
       yield { type: 'done' };
       return;
     }
 
-    const decoder = new TextDecoder();
-    let buffer = '';
+    const lines = sseText.split('\n');
+    for (const line of lines) {
+      if (signal.aborted) {
+        yield { type: 'done' };
+        return;
+      }
 
-    try {
-      let finished = false;
-      while (!finished) {
-        const { done, value } = await reader.read();
-        if (done || signal.aborted) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith('data:')) {
+        continue;
+      }
+
+      const data = trimmed.slice(5).trim();
+      if (data === '[DONE]') {
+        break;
+      }
+
+      try {
+        const parsed = JSON.parse(data) as {
+          choices?: Array<{
+            delta?: {
+              content?: string;
+            };
+            finish_reason?: string | null;
+          }>;
+          usage?: {
+            prompt_tokens?: number;
+            completion_tokens?: number;
+          };
+        };
+
+        const choice = parsed.choices?.[0];
+        if (choice?.delta?.content) {
+          yield { type: 'text', content: choice.delta.content };
+        }
+
+        if (parsed.usage) {
+          inputTokens = parsed.usage.prompt_tokens ?? 0;
+          outputTokens = parsed.usage.completion_tokens ?? 0;
+        }
+
+        if (choice?.finish_reason) {
           break;
         }
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith('data:')) {
-            continue;
-          }
-
-          const data = trimmed.slice(5).trim();
-          if (data === '[DONE]') {
-            finished = true;
-            break;
-          }
-
-          try {
-            const parsed = JSON.parse(data) as {
-              choices?: Array<{
-                delta?: {
-                  content?: string;
-                };
-                finish_reason?: string | null;
-              }>;
-              usage?: {
-                prompt_tokens?: number;
-                completion_tokens?: number;
-              };
-            };
-
-            const choice = parsed.choices?.[0];
-            if (choice?.delta?.content) {
-              yield { type: 'text', content: choice.delta.content };
-            }
-
-            if (choice?.finish_reason) {
-              finished = true;
-              break;
-            }
-            if (parsed.usage) {
-              inputTokens = parsed.usage.prompt_tokens ?? 0;
-              outputTokens = parsed.usage.completion_tokens ?? 0;
-            }
-          } catch {
-            // Skip malformed SSE frames.
-          }
-        }
+      } catch {
+        // Skip malformed SSE frames.
       }
-    } finally {
-      reader.releaseLock();
     }
 
     if (signal.aborted) {

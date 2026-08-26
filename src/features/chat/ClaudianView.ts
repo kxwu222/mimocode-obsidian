@@ -265,11 +265,9 @@ export class ClaudianView extends ItemView {
    * The wrapper is moved to the active tab's nav row on tab switches.
    */
   private buildNavRowContent(): HTMLElement {
-    const activeDocument = this.containerEl.ownerDocument;
+    const fragment = createFragment();
 
-    const fragment = activeDocument.createDocumentFragment();
-
-    this.tabBarContainerEl = activeDocument.createElement('div');
+    this.tabBarContainerEl = createDiv();
     this.tabBarContainerEl.className = 'claudian-tab-bar-container';
     this.tabBar = new TabBar(this.tabBarContainerEl, {
       onTabClick: (tabId) => this.handleTabClick(tabId),
@@ -282,7 +280,7 @@ export class ClaudianView extends ItemView {
     });
     fragment.appendChild(this.tabBarContainerEl);
 
-    const navActionsEl = activeDocument.createElement('div');
+    const navActionsEl = createDiv();
     navActionsEl.className = 'claudian-input-nav-actions';
 
     this.newTabButtonEl = navActionsEl.createDiv({ cls: 'claudian-input-nav-btn claudian-new-tab-btn' });
@@ -317,7 +315,7 @@ export class ClaudianView extends ItemView {
 
     fragment.appendChild(navActionsEl);
 
-    const wrapper = activeDocument.createElement('div');
+    const wrapper = createDiv();
     wrapper.className = 'claudian-input-nav-content';
     wrapper.appendChild(fragment);
     return wrapper;

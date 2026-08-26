@@ -263,7 +263,7 @@ export const piSettingsTabRenderer: ProviderSettingsTabRenderer = {
       );
 
       const headerEl = selectedEl.createDiv({ cls: 'claudian-provider-model-picker-selected-header' });
-      headerEl.createEl('span', {
+      headerEl.createSpan({
         cls: 'claudian-provider-model-picker-selected-label',
         text: `Selected (${current.visibleModels.length})`,
       });
@@ -292,29 +292,29 @@ export const piSettingsTabRenderer: ProviderSettingsTabRenderer = {
         const infoEl = rowEl.createDiv({ cls: 'claudian-provider-model-picker-selected-info' });
         const titleEl = infoEl.createDiv({ cls: 'claudian-provider-model-picker-selected-title' });
         if (enriched) {
-          titleEl.createEl('span', {
+          titleEl.createSpan({
             cls: 'claudian-provider-model-picker-selected-badge',
             text: enriched.providerLabel,
           });
-          titleEl.createEl('span', {
+          titleEl.createSpan({
             cls: 'claudian-provider-model-picker-selected-name',
             text: enriched.modelLabel,
           });
         } else {
-          titleEl.createEl('span', {
+          titleEl.createSpan({
             cls: 'claudian-provider-model-picker-selected-name',
             text: encodedId,
           });
         }
 
         if (enriched && !enriched.isAvailable) {
-          infoEl.createEl('div', {
+          infoEl.createDiv({
             cls: 'claudian-provider-model-picker-selected-unavailable',
             text: 'Not currently reported by Pi',
           });
         }
 
-        infoEl.createEl('div', {
+        infoEl.createDiv({
           cls: 'claudian-provider-model-picker-selected-id',
           text: encodedId,
         });
@@ -445,11 +445,11 @@ export const piSettingsTabRenderer: ProviderSettingsTabRenderer = {
         const textEl = rowEl.createDiv({ cls: 'claudian-provider-model-picker-row-text' });
 
         const headerEl = textEl.createDiv({ cls: 'claudian-provider-model-picker-row-header' });
-        headerEl.createEl('span', {
+        headerEl.createSpan({
           cls: 'claudian-provider-model-picker-row-name',
           text: model.modelLabel,
         });
-        const badgeEl = headerEl.createEl('span', {
+        const badgeEl = headerEl.createSpan({
           cls: 'claudian-provider-model-picker-row-badge',
           text: model.providerLabel,
         });

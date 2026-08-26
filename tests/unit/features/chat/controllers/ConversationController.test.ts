@@ -1289,17 +1289,17 @@ describe('ConversationController', () => {
         (titleEl as any).replaceWith = jest.fn();
       }
 
-      const origDocument = global.document;
-      global.document = { createElement: jest.fn().mockReturnValue(mockInput) } as any;
+      const origCreateEl = (globalThis as any).createEl;
+      (globalThis as any).createEl = jest.fn().mockReturnValue(mockInput);
 
       try {
         clickHandlers![0]({ stopPropagation: jest.fn() });
 
-        expect(global.document.createElement).toHaveBeenCalledWith('input');
+        expect((globalThis as any).createEl).toHaveBeenCalledWith('input');
         expect((mockInput as any).value).toBe('Test Title');
         expect(titleEl!.replaceWith).toHaveBeenCalledWith(mockInput);
       } finally {
-        global.document = origDocument;
+        (globalThis as any).createEl = origCreateEl;
       }
     });
 

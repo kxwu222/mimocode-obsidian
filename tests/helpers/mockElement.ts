@@ -183,6 +183,36 @@ export function createMockEl(tag = 'div'): any {
     removeEventListener(event: string, handler: (...args: any[]) => void) {
       currentDocument()?.removeEventListener?.(event, handler);
     },
+    createEl: (tagName: string, opts?: { cls?: string; text?: string; attr?: Record<string, string> }) => {
+      const el = createMockEl(tagName);
+      if (opts?.cls) el.addClass(opts.cls);
+      if (opts?.text) el.textContent = opts.text;
+      if (opts?.attr) {
+        for (const [name, value] of Object.entries(opts.attr)) {
+          el.setAttribute(name, value);
+        }
+      }
+      return el;
+    },
+    createDiv: (opts?: { cls?: string; text?: string }) => ownerDocument.createEl('div', opts),
+    createSpan: (opts?: { cls?: string; text?: string }) => ownerDocument.createEl('span', opts),
+    createSvg: (tagName: string, opts?: { cls?: string; attr?: Record<string, string> }) =>
+      ownerDocument.createEl(tagName, opts),
+    createFragment: () => {
+      const children: unknown[] = [];
+      return {
+        appendChild(child: unknown) {
+          children.push(child);
+          return child;
+        },
+        insertBefore(el: unknown) {
+          children.unshift(el);
+        },
+        get firstChild() {
+          return children[0] ?? null;
+        },
+      };
+    },
     createElement: (tagName: string) => currentDocument()?.createElement?.(tagName) ?? createMockEl(tagName),
     createElementNS: (namespace: string, tagName: string) =>
       currentDocument()?.createElementNS?.(namespace, tagName) ?? createMockEl(tagName),

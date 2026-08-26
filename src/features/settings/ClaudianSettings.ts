@@ -112,6 +112,42 @@ export class ClaudianSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  /**
+   * Search index for Obsidian 1.13+. The custom tabbed UI still lives in
+   * display(); this list is what settings search matches against.
+   */
+  getSettingDefinitions(): Array<{
+    name: string;
+    desc?: string;
+    aliases?: string[];
+    render?: () => void;
+  }> {
+    return [
+      {
+        name: t('settings.language.name'),
+        desc: t('settings.language.desc'),
+        aliases: [
+          t('settings.maxTabs.name'),
+          t('settings.chatViewPlacement.name'),
+          t('settings.enableAutoScroll.name'),
+          t('settings.deferMathRenderingDuringStreaming.name'),
+          t('settings.autoTitle.name'),
+          t('settings.requireCommandOrControlEnterToSend.name'),
+          'API key',
+          'Billing mode',
+          'Cluster',
+          'Default model',
+          'Enable MiMo',
+        ],
+        render: () => {
+          if (!this.containerEl.querySelector('.claudian-settings-tabs')) {
+            this.display();
+          }
+        },
+      },
+    ];
+  }
+
   display(): void {
     const { containerEl } = this;
     containerEl.empty();

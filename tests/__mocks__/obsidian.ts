@@ -1,5 +1,7 @@
 // Mock for Obsidian API
 
+import { createMockEl } from '../helpers/mockElement';
+
 export class Plugin {
   app: any;
   manifest: any;
@@ -262,6 +264,66 @@ export const MarkdownRenderer = {
 };
 
 export const setIcon = jest.fn();
+
+export const requestUrl = jest.fn().mockResolvedValue({
+  status: 200,
+  text: '',
+  json: {},
+  arrayBuffer: new ArrayBuffer(0),
+  headers: {},
+});
+
+function applyCreateOpts(el: any, opts?: any): any {
+  if (!opts) return el;
+  if (typeof opts === 'string') {
+    el.addClass?.(opts);
+    return el;
+  }
+  if (opts.cls) el.addClass?.(opts.cls);
+  if (opts.text) el.textContent = opts.text;
+  if (opts.attr) {
+    for (const [name, value] of Object.entries(opts.attr)) {
+      el.setAttribute?.(name, String(value));
+    }
+  }
+  opts.parent?.appendChild?.(el);
+  return el;
+}
+
+export function createDiv(opts?: any): any {
+  return applyCreateOpts(createMockEl('div'), opts);
+}
+
+export function createSpan(opts?: any): any {
+  return applyCreateOpts(createMockEl('span'), opts);
+}
+
+export function createEl(tag: string, opts?: any): any {
+  return applyCreateOpts(createMockEl(tag), opts);
+}
+
+export function createSvg(tag: string, opts?: any): any {
+  return applyCreateOpts(createMockEl(tag), opts);
+}
+
+export function createFragment(): any {
+  const children: any[] = [];
+  return {
+    appendChild(child: any) {
+      children.push(child);
+      return child;
+    },
+    insertBefore(el: any, _ref: any) {
+      children.unshift(el);
+    },
+    get firstChild() {
+      return children[0] ?? null;
+    },
+    childNodes: children,
+  };
+}
+
+Object.assign(globalThis, { createDiv, createSpan, createEl, createSvg, createFragment });
 
 // Notice mock that tracks constructor calls
 export const Notice = jest.fn().mockImplementation((_message: string, _timeout?: number) => {});
