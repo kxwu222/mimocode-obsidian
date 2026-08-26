@@ -58,6 +58,7 @@
 .claudian-message-user {
   position: relative;
   background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
   align-self: flex-end;
   max-width: 85%;
   border-end-end-radius: 4px;
