@@ -29,13 +29,24 @@ import { getMimoBaseUrl, getMimoProviderSettings, isMimoModel } from '../setting
 import {
   buildMimoMessages,
   type MimoMessage,
+  type MimoToolCall,
 } from './buildMimoMessages';
+import { parseMimoCompletion, parseToolArguments } from './parseMimoCompletion';
 import { applyVaultNoteSnippets, loadVaultNoteSnippets } from './vaultNoteContext';
+import {
+  executeVaultTool,
+  isMimoVaultTool,
+  MIMO_VAULT_TOOLS,
+  type VaultToolContext,
+} from './vaultTools';
+
+const MAX_VAULT_TOOL_ROUNDS = 8;
 
 const MIMO_SYSTEM_PROMPT =
   'You are MiMo, an AI assistant developed by Xiaomi, working inside the user\'s Obsidian vault. '
   + 'When a message includes <linked_note> or <attached_note> blocks, those blocks contain the full note text. '
-  + 'Use that text directly. You cannot read or write other vault files unless the user pastes them.';
+  + 'Use that text directly. You can also browse the vault with the Read, LS, Glob, and Grep tools. '
+  + 'Use those tools when the user asks about notes you have not been given. You cannot write, edit, or delete files.';
 
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
@@ -188,7 +199,7 @@ export class MimoChatRuntime implements ChatRuntime {
     }
   }
 
-  /** Stream one HTTP completion. Tool calls are not executed — this is API-key chat, not an agent. */
+  /** Stream one HTTP completion, executing vault tools until the model stops. */
   private async *_runAgentLoop(
     baseUrl: string,
     apiKey: string,
@@ -198,12 +209,74 @@ export class MimoChatRuntime implements ChatRuntime {
   ): AsyncGenerator<StreamChunk> {
     let inputTokens = 0;
     let outputTokens = 0;
+    const vaultTools = this.createVaultToolContext();
 
+    for (let round = 0; round < MAX_VAULT_TOOL_ROUNDS; round++) {
+      const completion = yield* this.completeOnce(
+        baseUrl,
+        apiKey,
+        model,
+        messages,
+        signal,
+      );
+      if (!completion) {
+        return;
+      }
+
+      inputTokens = completion.usage.prompt_tokens || inputTokens;
+      outputTokens += completion.usage.completion_tokens;
+
+      if (completion.text) {
+        yield { type: 'text', content: completion.text };
+      }
+
+      if (completion.toolCalls.length === 0) {
+        const totalTokens = inputTokens + outputTokens;
+        if (totalTokens > 0) {
+          const contextWindow = 1_000_000;
+          yield {
+            type: 'usage',
+            usage: {
+              contextTokens: inputTokens,
+              contextWindow,
+              inputTokens,
+              model,
+              percentage: inputTokens / contextWindow,
+            },
+          };
+        }
+        yield { type: 'done' };
+        return;
+      }
+
+      messages.push({
+        role: 'assistant',
+        content: completion.text || null,
+        tool_calls: completion.toolCalls,
+      });
+
+      for (const toolCall of completion.toolCalls) {
+        yield* this.executeToolCall(toolCall, vaultTools, messages);
+      }
+    }
+
+    yield { type: 'error', content: 'Stopped after too many vault tool calls.' };
+    yield { type: 'done' };
+  }
+
+  private async *completeOnce(
+    baseUrl: string,
+    apiKey: string,
+    model: string,
+    messages: MimoMessage[],
+    signal: AbortSignal,
+  ): AsyncGenerator<StreamChunk, ReturnType<typeof parseMimoCompletion> | null> {
     const body: Record<string, unknown> = {
       model,
       messages,
       stream: true,
       max_completion_tokens: 32768,
+      tools: MIMO_VAULT_TOOLS,
     };
 
     let sseText: string;
@@ -224,7 +297,7 @@ export class MimoChatRuntime implements ChatRuntime {
 
       if (signal.aborted) {
         yield { type: 'done' };
-        return;
+        return null;
       }
 
       if (response.status < 200 || response.status >= 300) {
@@ -233,97 +306,63 @@ export class MimoChatRuntime implements ChatRuntime {
           content: `MiMo API error ${response.status}: ${response.text || ''}`.trim(),
         };
         yield { type: 'done' };
-        return;
+        return null;
       }
 
       sseText = response.text ?? '';
     } catch (error) {
       if (signal.aborted || isAbortError(error)) {
         yield { type: 'done' };
-        return;
+        return null;
       }
       const message = error instanceof Error ? error.message : 'Network error';
       yield { type: 'error', content: `MiMo request failed: ${message}` };
       yield { type: 'done' };
-      return;
+      return null;
     }
 
     if (!sseText) {
       yield { type: 'error', content: 'MiMo response body is empty.' };
       yield { type: 'done' };
-      return;
+      return null;
     }
 
-    const lines = sseText.split('\n');
-    for (const line of lines) {
-      if (signal.aborted) {
-        yield { type: 'done' };
-        return;
-      }
+    return parseMimoCompletion(sseText);
+  }
 
-      const trimmed = line.trim();
-      if (!trimmed || !trimmed.startsWith('data:')) {
-        continue;
-      }
+  private async *executeToolCall(
+    toolCall: MimoToolCall,
+    vaultTools: VaultToolContext,
+    messages: MimoMessage[],
+  ): AsyncGenerator<StreamChunk> {
+    const name = toolCall.function.name;
+    const input = parseToolArguments(toolCall.function.arguments);
+    yield { type: 'tool_use', id: toolCall.id, name, input };
 
-      const data = trimmed.slice(5).trim();
-      if (data === '[DONE]') {
-        break;
-      }
+    const result = isMimoVaultTool(name)
+      ? await executeVaultTool(name, input, vaultTools)
+      : { content: `Unknown tool: ${name}`, isError: true };
 
-      try {
-        const parsed = JSON.parse(data) as {
-          choices?: Array<{
-            delta?: {
-              content?: string;
-            };
-            finish_reason?: string | null;
-          }>;
-          usage?: {
-            prompt_tokens?: number;
-            completion_tokens?: number;
-          };
-        };
+    yield {
+      type: 'tool_result',
+      id: toolCall.id,
+      content: result.content,
+      isError: result.isError,
+    };
 
-        const choice = parsed.choices?.[0];
-        if (choice?.delta?.content) {
-          yield { type: 'text', content: choice.delta.content };
-        }
+    messages.push({
+      role: 'tool',
+      tool_call_id: toolCall.id,
+      content: result.content,
+    });
+  }
 
-        if (parsed.usage) {
-          inputTokens = parsed.usage.prompt_tokens ?? 0;
-          outputTokens = parsed.usage.completion_tokens ?? 0;
-        }
-
-        if (choice?.finish_reason) {
-          break;
-        }
-      } catch {
-        // Skip malformed SSE frames.
-      }
-    }
-
-    if (signal.aborted) {
-      yield { type: 'done' };
-      return;
-    }
-
-    const totalTokens = inputTokens + outputTokens;
-    if (totalTokens > 0) {
-      const contextWindow = 1_000_000;
-      yield {
-        type: 'usage',
-        usage: {
-          contextTokens: inputTokens,
-          contextWindow,
-          inputTokens,
-          model,
-          percentage: inputTokens / contextWindow,
-        },
-      };
-    }
-
-    yield { type: 'done' };
+  private createVaultToolContext(): VaultToolContext {
+    return {
+      configDir: this.plugin.app.vault.configDir,
+      listMarkdownFiles: () => this.plugin.app.vault.getMarkdownFiles().map((file) => ({ path: file.path })),
+      readNote: (path) => this.readVaultNote(path),
+    };
   }
 
   cancel(): void {
