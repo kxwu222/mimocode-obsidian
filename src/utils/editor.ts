@@ -5,7 +5,7 @@
  */
 
 import type { EditorView } from '@codemirror/view';
-import type { Editor } from 'obsidian';
+import type { Editor, MarkdownView } from 'obsidian';
 
 /**
  * Gets the CodeMirror EditorView from an Obsidian Editor.
@@ -30,6 +30,93 @@ export interface EditorSelectionContext {
   cursorContext?: CursorContext;
   lineCount?: number; // Number of lines in selection (for UI indicator)
   startLine?: number; // 1-indexed starting line number
+}
+
+export interface EditorSelectionAnchorRect {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+/** A selection captured before focus moves from the note into chat. */
+export interface CapturedEditorSelection {
+  notePath: string;
+  selectedText: string;
+  lineCount: number;
+  startLine?: number;
+  from?: number;
+  to?: number;
+  editorView?: EditorView;
+  domRanges?: Range[];
+  anchorRect: EditorSelectionAnchorRect;
+}
+
+export function captureMarkdownSelection(view: MarkdownView): CapturedEditorSelection | null {
+  const notePath = view.file?.path;
+  if (!notePath) return null;
+
+  if (view.getMode() === 'preview') {
+    return captureReadingModeSelection(view, notePath);
+  }
+
+  const selectedText = view.editor.getSelection();
+  if (!selectedText.trim()) return null;
+
+  const fromPos = view.editor.getCursor('from');
+  const toPos = view.editor.getCursor('to');
+  const from = view.editor.posToOffset(fromPos);
+  const to = view.editor.posToOffset(toPos);
+  const editorView = getEditorView(view.editor);
+  const coords = editorView?.coordsAtPos(to) ?? view.containerEl.getBoundingClientRect();
+
+  return {
+    notePath,
+    selectedText,
+    lineCount: selectedText.split(/\r?\n/).length,
+    startLine: fromPos.line + 1,
+    from,
+    to,
+    editorView,
+    anchorRect: toAnchorRect(coords),
+  };
+}
+
+function captureReadingModeSelection(
+  view: MarkdownView,
+  notePath: string,
+): CapturedEditorSelection | null {
+  const ownerDocument = view.containerEl.ownerDocument;
+  const selection = ownerDocument.getSelection();
+  const selectedText = selection?.toString() ?? '';
+  if (!selection || !selectedText.trim() || selection.rangeCount === 0) return null;
+
+  const anchorInside = selection.anchorNode && view.containerEl.contains(selection.anchorNode);
+  const focusInside = selection.focusNode && view.containerEl.contains(selection.focusNode);
+  if (!anchorInside && !focusInside) return null;
+
+  const domRanges: Range[] = [];
+  for (let index = 0; index < selection.rangeCount; index++) {
+    domRanges.push(selection.getRangeAt(index).cloneRange());
+  }
+  const lastRange = selection.getRangeAt(selection.rangeCount - 1);
+
+  return {
+    notePath,
+    selectedText,
+    lineCount: selectedText.split(/\r?\n/).length,
+    domRanges,
+    anchorRect: toAnchorRect(lastRange.getBoundingClientRect()),
+  };
+}
+
+function toAnchorRect(rect: Pick<DOMRect, 'top' | 'right' | 'bottom' | 'left'>): EditorSelectionAnchorRect {
+  return {
+    top: rect.top,
+    right: rect.right,
+    bottom: rect.bottom,
+    left: rect.left,
+  };
 }
 
 export function findNearestNonEmptyLine(

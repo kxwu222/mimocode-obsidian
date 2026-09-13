@@ -155,6 +155,7 @@ function createMockDeps(overrides: Partial<InputControllerDeps> = {}): InputCont
     } as any,
     selectionController: {
       getContext: jest.fn().mockReturnValue(null),
+      clear: jest.fn(),
     } as any,
     canvasSelectionController: {
       getContext: jest.fn().mockReturnValue(null),
@@ -2156,6 +2157,34 @@ describe('InputController - Message Queue', () => {
       const promptSent = queryCall[0].prompt;
       expect(promptSent).toContain('selected text content');
       expect(promptSent).toContain('test/note.md');
+      expect(deps.selectionController.clear).toHaveBeenCalled();
+    });
+
+    it('does not clear a newer live attachment when dispatching a queued turn snapshot', async () => {
+      deps = createSendableDeps();
+      (deps.selectionController.getContext as jest.Mock).mockReturnValue({
+        notePath: 'new.md',
+        mode: 'selection',
+        selectedText: 'new selection',
+      });
+      ((deps as any).mockAgentService.query as jest.Mock).mockReturnValue(
+        createMockStream([{ type: 'done' }]),
+      );
+      controller = new InputController(deps);
+
+      await controller.sendMessage({
+        content: 'queued message',
+        turnRequestOverride: {
+          text: 'queued message',
+          editorSelection: {
+            notePath: 'old.md',
+            mode: 'selection',
+            selectedText: 'old selection',
+          },
+        },
+      });
+
+      expect(deps.selectionController.clear).not.toHaveBeenCalled();
     });
 
     it('should preserve preview selection text without fabricating line attributes', async () => {

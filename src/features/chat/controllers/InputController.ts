@@ -254,6 +254,9 @@ export class InputController {
         state.queuedMessage,
         this.createQueuedMessage(displayContent, turnRequest),
       );
+      if (editorContext) {
+        selectionController.clear();
+      }
 
       if (shouldUseInput) {
         inputEl.value = '';
@@ -308,6 +311,13 @@ export class InputController {
         browserContextOverride: options?.browserContextOverride,
         canvasContextOverride: options?.canvasContextOverride,
       });
+    if (
+      !options?.turnRequestOverride
+      && options?.editorContextOverride === undefined
+      && turnSubmission.turnRequest.editorSelection
+    ) {
+      selectionController.clear();
+    }
     const { displayContent, turnRequest } = turnSubmission;
 
     fileContextManager?.markCurrentNoteSent();

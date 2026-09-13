@@ -12,6 +12,7 @@ import {
   scheduleAnimationFrame,
   type ScheduledAnimationFrame,
 } from '../../utils/animationFrame';
+import type { CapturedEditorSelection } from '../../utils/editor';
 import type { HistoryConversationStatus } from './controllers/ConversationController';
 import {
   getTabProviderId,
@@ -712,6 +713,18 @@ export class ClaudianView extends ItemView {
   /** Gets the currently active tab. */
   getActiveTab(): TabData | null {
     return this.tabManager?.getActiveTab() ?? null;
+  }
+
+  /** Attaches an explicitly captured note selection to the active chat composer. */
+  attachEditorSelection(selection: CapturedEditorSelection): boolean {
+    const activeTab = this.tabManager?.getActiveTab();
+    const controller = activeTab?.controllers.selectionController;
+    if (!activeTab || !controller) return false;
+
+    controller.attachSelection(selection);
+    activeTab.controllers.navigationController?.focusInput();
+    controller.showHighlight();
+    return true;
   }
 
   /** Gets the tab manager. */

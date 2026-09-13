@@ -1,5 +1,5 @@
 import type { PreparedChatTurn } from '../../../core/runtime/types';
-import type { ChatMessage } from '../../../core/types';
+import type { ChatMessage, ImageAttachment } from '../../../core/types';
 
 export interface MimoTextContent {
   type: 'text';
@@ -43,6 +43,50 @@ export type MimoMessage =
   | MimoAssistantMessage
   | MimoToolResultMessage;
 
+const DEFAULT_IMAGE_PROMPT = 'Please look at the attached image.';
+const MIMO_IMAGE_MEDIA_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+]);
+
+export function mimoCurrentTurnHasImages(turn: PreparedChatTurn): boolean {
+  return usableImages(turn.request.images).length > 0;
+}
+
+export function mimoTurnHasImages(
+  turn: PreparedChatTurn,
+  conversationHistory: ChatMessage[] | undefined,
+): boolean {
+  if (mimoCurrentTurnHasImages(turn)) {
+    return true;
+  }
+  return (conversationHistory ?? []).some((msg) => usableImages(msg.images).length > 0);
+}
+
+function usableImages(images: ImageAttachment[] | undefined): ImageAttachment[] {
+  return (images ?? []).filter((image) => (
+    typeof image.data === 'string'
+    && image.data.trim().length > 0
+    && MIMO_IMAGE_MEDIA_TYPES.has(image.mediaType)
+  ));
+}
+
+function userContent(text: string, images?: ImageAttachment[]): string | MimoContentPart[] {
+  const attached = usableImages(images);
+  if (attached.length === 0) {
+    return text;
+  }
+
+  const parts: MimoContentPart[] = attached.map((img) => ({
+    type: 'image_url',
+    image_url: { url: `data:${img.mediaType};base64,${img.data}` },
+  }));
+  parts.push({ type: 'text', text: text.trim() || DEFAULT_IMAGE_PROMPT });
+  return parts;
+}
+
 export function buildMimoMessages(
   turn: PreparedChatTurn,
   conversationHistory: ChatMessage[] | undefined,
@@ -55,24 +99,14 @@ export function buildMimoMessages(
     if (msg.isRebuiltContext) {
       continue;
     }
+    if (msg.role === 'user') {
+      messages.push({ role: 'user', content: userContent(msg.content, msg.images) });
+      continue;
+    }
     messages.push({ role: msg.role, content: msg.content });
   }
 
-  const { images } = turn.request;
-  if (images && images.length > 0) {
-    const parts: MimoContentPart[] = [{ type: 'text', text: turn.prompt }];
-    for (const img of images) {
-      if (img.data) {
-        parts.push({
-          type: 'image_url',
-          image_url: { url: `data:${img.mediaType};base64,${img.data}` },
-        });
-      }
-    }
-    messages.push({ role: 'user', content: parts });
-  } else {
-    messages.push({ role: 'user', content: turn.prompt });
-  }
+  messages.push({ role: 'user', content: userContent(turn.prompt, turn.request.images) });
 
   return messages;
 }

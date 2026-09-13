@@ -18,6 +18,7 @@ import type { ImageContextManager } from '../ui/ImageContext';
 import type { ExternalContextSelector, McpServerSelector } from '../ui/InputToolbar';
 import type { StatusPanel } from '../ui/StatusPanel';
 import { getWelcomeCopy, paintWelcome } from '../utils/welcomeCopy';
+import type { SelectionController } from './SelectionController';
 
 function runConversationAction(action: () => Promise<void>, failureMessage: string): void {
   void action().catch(() => {
@@ -43,6 +44,7 @@ export interface ConversationControllerDeps {
   getInputEl: () => HTMLTextAreaElement;
   getFileContextManager: () => FileContextManager | null;
   getImageContextManager: () => ImageContextManager | null;
+  getSelectionController?: () => SelectionController | null;
   getMcpServerSelector: () => McpServerSelector | null;
   getExternalContextSelector: () => ExternalContextSelector | null;
   clearQueuedMessage: () => void;
@@ -182,6 +184,7 @@ export class ConversationController {
       this.refreshWelcome();
 
       this.deps.getImageContextManager()?.clearImages();
+      this.deps.getSelectionController?.()?.clear();
       this.deps.getMcpServerSelector()?.clearEnabled();
       // Pass current settings to ensure we have the most up-to-date persistent paths
       this.deps.getExternalContextSelector()?.clearExternalContexts(
@@ -281,6 +284,7 @@ export class ConversationController {
 
       this.deps.getInputEl().value = '';
       this.deps.clearQueuedMessage();
+      this.deps.getSelectionController?.()?.clear();
 
       this.restoreConversation(conversation);
 

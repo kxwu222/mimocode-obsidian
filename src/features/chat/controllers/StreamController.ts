@@ -1390,7 +1390,7 @@ export class StreamController {
           return;
         }
         const elapsedSeconds = Math.floor((performance.now() - state.responseStartTime) / 1000);
-        timerSpan.setText(` (esc to interrupt · ${formatDurationMmSs(elapsedSeconds)})`);
+        timerSpan.setText(` (Stop or Esc · ${formatDurationMmSs(elapsedSeconds)})`);
       };
       updateTimer(); // Initial update
 

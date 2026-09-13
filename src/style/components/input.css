@@ -1,7 +1,7 @@
 /* Input area */
 .claudian-input-container {
   position: relative;
-  padding: 12px 0 0 0;
+  padding: 12px 12px 0 12px;
 }
 
 .claudian-input-footer {
@@ -120,6 +120,72 @@
   text-overflow: ellipsis;
 }
 
+.claudian-selection-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  pointer-events: auto;
+}
+
+.claudian-selection-indicator.is-offer {
+  color: var(--text-muted);
+  border-color: var(--background-modifier-border);
+  cursor: pointer;
+}
+
+.claudian-selection-indicator.is-included {
+  cursor: default;
+}
+
+.claudian-selection-dismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.claudian-selection-dismiss:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.claudian-editor-selection-chat-btn {
+  position: fixed;
+  z-index: 1000;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  box-shadow: var(--shadow-s);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: var(--font-ui-smaller);
+}
+
+.claudian-editor-selection-chat-btn:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+}
+
+.claudian-editor-selection-chat-icon,
+.claudian-editor-selection-chat-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
 .claudian-input-wrapper textarea.claudian-input {
   width: 100%;
   flex: 1 1 0;
@@ -158,6 +224,37 @@
   justify-content: flex-start;
   flex-shrink: 0;
   padding: 4px 6px 6px 6px;
+}
+
+.claudian-stop-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.claudian-stop-btn:hover {
+  background: var(--interactive-accent-hover);
+  color: var(--text-on-accent);
+}
+
+.claudian-stop-btn:active {
+  background: var(--interactive-accent-hover);
+  color: var(--text-on-accent);
+}
+
+.claudian-stop-btn svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* File indicator (attached files) */

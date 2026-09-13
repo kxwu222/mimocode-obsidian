@@ -54,7 +54,10 @@ const MIMO_STRINGS_EN = {
   testNetworkFailed: 'Connection failed.',
   modelHeading: 'Model',
   defaultModelName: 'Default model',
-  defaultModelDesc: 'Model used when no per-tab selection is active.',
+  defaultModelDesc: 'Model used when no per-tab selection is active. Image uploads always use V2.5 — Pro cannot read images.',
+  toolsHeading: 'Tools',
+  webSearchName: 'Web search',
+  webSearchDesc: 'Ask Xiaomi for current public web results. This switch is not enough by itself: enable the Web Search Plugin on a pay-as-you-go (sk-) key at platform.xiaomimimo.com. Token Plan (tp-) clusters often reject search. Extra fees apply.',
 };
 
 const MIMO_STRINGS_ZH_CN: MimoStrings = {
@@ -92,7 +95,10 @@ const MIMO_STRINGS_ZH_CN: MimoStrings = {
   testNetworkFailed: '连接失败。',
   modelHeading: '模型',
   defaultModelName: '默认模型',
-  defaultModelDesc: '未单独选择模型时使用此默认模型。',
+  defaultModelDesc: '未单独选择模型时使用此默认模型。上传图片时始终使用 V2.5，Pro 无法识别图片。',
+  toolsHeading: '工具',
+  webSearchName: '联网搜索',
+  webSearchDesc: '向小米申请检索公开网页。仅打开此开关不够：需在 platform.xiaomimimo.com 为按量付费（sk-）密钥开通联网服务插件。Token Plan（tp-）集群通常会拒绝联网。会产生额外费用。',
 };
 
 const MIMO_STRINGS_ZH_TW: MimoStrings = {
@@ -130,7 +136,10 @@ const MIMO_STRINGS_ZH_TW: MimoStrings = {
   testNetworkFailed: '連線失敗。',
   modelHeading: '模型',
   defaultModelName: '預設模型',
-  defaultModelDesc: '未單獨選擇模型時使用此預設模型。',
+  defaultModelDesc: '未單獨選擇模型時使用此預設模型。上傳圖片時一律使用 V2.5，Pro 無法辨識圖片。',
+  toolsHeading: '工具',
+  webSearchName: '聯網搜尋',
+  webSearchDesc: '向小米申請檢索公開網頁。僅打開此開關不夠：需在 platform.xiaomimimo.com 為按量付費（sk-）金鑰開通聯網服務外掛。Token Plan（tp-）叢集通常會拒絕聯網。會產生額外費用。',
 };
 
 function getMimoStrings(): MimoStrings {
@@ -333,5 +342,19 @@ export const mimoSettingsTabRenderer: ProviderSettingsTabRenderer = {
             context.refreshModelSelectors();
           });
       });
+
+    new Setting(container).setName(s.toolsHeading).setHeading();
+
+    new Setting(container)
+      .setName(s.webSearchName)
+      .setDesc(s.webSearchDesc)
+      .addToggle((toggle) =>
+        toggle
+          .setValue(getMimoProviderSettings(settingsBag).webSearch)
+          .onChange(async (value) => {
+            updateMimoProviderSettings(settingsBag, { webSearch: value });
+            await context.plugin.saveSettings();
+          })
+      );
   },
 };

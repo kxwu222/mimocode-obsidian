@@ -31,13 +31,18 @@ import {
 } from './core/types';
 import type { ChatViewPlacement, EnvironmentScope } from './core/types/settings';
 import { ClaudianView } from './features/chat/ClaudianView';
+import { EditorSelectionChatAction } from './features/chat/controllers/EditorSelectionChatAction';
 import { type InlineEditContext, InlineEditModal } from './features/inline-edit/ui/InlineEditModal';
 import { ClaudianSettingTab } from './features/settings/ClaudianSettings';
 import { setLocale } from './i18n/i18n';
 import type { Locale } from './i18n/types';
 import { OPENCODE_PLAN_MODE_ID, OPENCODE_SAFE_MODE_ID } from './providers/opencode/modes';
 import { extractUserDisplayContent } from './utils/context';
-import { buildCursorContext } from './utils/editor';
+import {
+  buildCursorContext,
+  type CapturedEditorSelection,
+  captureMarkdownSelection,
+} from './utils/editor';
 import { revealWorkspaceLeaf } from './utils/obsidianCompat';
 import { getVaultPath } from './utils/vaultPath';
 
@@ -52,6 +57,7 @@ export default class ClaudianPlugin extends Plugin {
   storage!: SharedAppStorage;
   private conversations: Conversation[] = [];
   private lastKnownTabManagerState: AppTabManagerState | null = null;
+  private editorSelectionChatAction: EditorSelectionChatAction | null = null;
 
   async onload() {
     await this.loadSettings();
@@ -61,6 +67,12 @@ export default class ClaudianPlugin extends Plugin {
       VIEW_TYPE_CLAUDIAN,
       (leaf) => new ClaudianView(leaf, this)
     );
+
+    this.editorSelectionChatAction = new EditorSelectionChatAction(
+      this.app,
+      (selection) => this.attachSelectionToChat(selection),
+    );
+    this.editorSelectionChatAction.start();
 
     this.addRibbonIcon('bot', 'Open MiMo', () => {
       void this.activateView();
@@ -73,6 +85,39 @@ export default class ClaudianPlugin extends Plugin {
         void this.activateView();
       },
     });
+
+    this.addCommand({
+      id: 'add-selection-to-chat',
+      name: 'Add selection to chat',
+      checkCallback: (checking: boolean) => {
+        const selection = this.captureActiveMarkdownSelection();
+        if (!selection) return false;
+        if (!checking) {
+          void this.attachSelectionToChat(selection);
+        }
+        return true;
+      },
+    });
+
+    this.registerEvent(
+      this.app.workspace.on('editor-menu', (menu, _editor, info) => {
+        const view = info instanceof MarkdownView
+          ? info
+          : this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!view) return;
+
+        const selection = captureMarkdownSelection(view);
+        if (!selection) return;
+        menu.addItem((item) => {
+          item
+            .setTitle('Add selection to chat')
+            .setIcon('bot')
+            .onClick(() => {
+              void this.attachSelectionToChat(selection);
+            });
+        });
+      }),
+    );
 
     this.addCommand({
       id: 'inline-edit',
@@ -179,7 +224,22 @@ export default class ClaudianPlugin extends Plugin {
   }
 
   onunload(): void {
+    this.editorSelectionChatAction?.dispose();
+    this.editorSelectionChatAction = null;
     void this.persistOpenTabStates();
+  }
+
+  private captureActiveMarkdownSelection(): CapturedEditorSelection | null {
+    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+    return view ? captureMarkdownSelection(view) : null;
+  }
+
+  private async attachSelectionToChat(selection: CapturedEditorSelection): Promise<void> {
+    await this.activateView();
+    const view = this.getView();
+    if (!view?.attachEditorSelection(selection)) {
+      new Notice('Could not attach the selection to chat.');
+    }
   }
 
   private async persistOpenTabStates(): Promise<void> {

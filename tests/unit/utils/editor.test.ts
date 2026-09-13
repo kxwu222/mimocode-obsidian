@@ -1,10 +1,102 @@
 import {
   appendEditorContext,
   buildCursorContext,
+  captureMarkdownSelection,
   type EditorSelectionContext,
   findNearestNonEmptyLine,
   formatEditorContext,
 } from '@/utils/editor';
+
+describe('captureMarkdownSelection', () => {
+  it('captures source-mode text, line metadata, offsets, and anchor position', () => {
+    const view = {
+      file: { path: 'notes/source.md' },
+      getMode: () => 'source',
+      containerEl: {
+        getBoundingClientRect: () => ({ top: 1, right: 2, bottom: 3, left: 4 }),
+      },
+      editor: {
+        getSelection: () => 'alpha\nbeta',
+        getCursor: (which: 'from' | 'to') => (
+          which === 'from' ? { line: 2, ch: 1 } : { line: 3, ch: 4 }
+        ),
+        posToOffset: (position: { line: number; ch: number }) => position.line * 100 + position.ch,
+        cm: {
+          coordsAtPos: () => ({ top: 10, right: 40, bottom: 30, left: 20 }),
+        },
+      },
+    };
+
+    expect(captureMarkdownSelection(view as never)).toEqual(expect.objectContaining({
+      notePath: 'notes/source.md',
+      selectedText: 'alpha\nbeta',
+      lineCount: 2,
+      startLine: 3,
+      from: 201,
+      to: 304,
+      anchorRect: { top: 10, right: 40, bottom: 30, left: 20 },
+    }));
+  });
+
+  it('captures reading-mode text only when its range is inside the note', () => {
+    const anchorNode = {};
+    const range = {
+      cloneRange: jest.fn(),
+      getBoundingClientRect: () => ({ top: 11, right: 41, bottom: 31, left: 21 }),
+    };
+    range.cloneRange.mockReturnValue(range);
+    const selection = {
+      toString: () => 'reading text',
+      rangeCount: 1,
+      anchorNode,
+      focusNode: anchorNode,
+      getRangeAt: () => range,
+    };
+    const view = {
+      file: { path: 'notes/reading.md' },
+      getMode: () => 'preview',
+      containerEl: {
+        contains: (node: unknown) => node === anchorNode,
+        ownerDocument: { getSelection: () => selection },
+      },
+    };
+
+    expect(captureMarkdownSelection(view as never)).toEqual(expect.objectContaining({
+      notePath: 'notes/reading.md',
+      selectedText: 'reading text',
+      lineCount: 1,
+      domRanges: [range],
+      anchorRect: { top: 11, right: 41, bottom: 31, left: 21 },
+    }));
+  });
+
+  it('ignores empty and outside-note selections', () => {
+    const sourceView = {
+      file: { path: 'notes/source.md' },
+      getMode: () => 'source',
+      editor: { getSelection: () => '   ' },
+    };
+    expect(captureMarkdownSelection(sourceView as never)).toBeNull();
+
+    const outsideNode = {};
+    const previewView = {
+      file: { path: 'notes/reading.md' },
+      getMode: () => 'preview',
+      containerEl: {
+        contains: () => false,
+        ownerDocument: {
+          getSelection: () => ({
+            toString: () => 'outside',
+            rangeCount: 1,
+            anchorNode: outsideNode,
+            focusNode: outsideNode,
+          }),
+        },
+      },
+    };
+    expect(captureMarkdownSelection(previewView as never)).toBeNull();
+  });
+});
 
 function makeGetLine(lines: string[]): (line: number) => string {
   return (line: number) => lines[line] ?? '';

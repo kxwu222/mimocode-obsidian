@@ -15,7 +15,9 @@ An Obsidian plugin that brings [Xiaomi MiMo](https://mimo.mi.com) into your vaul
 
 **Image attachments**: Drop or paste jpeg, png, gif, or webp into the *current* message. Images stay with the chat on disk so you can reopen the thread after a restart.
 
-**Editor and vault context**: The active note, `@`-mentioned notes, and any editor / canvas / browser selection are sent with the turn. MiMo can also list, search, read, write, and edit notes, and move them to Obsidian trash, using built-in vault tools (LS, Glob, Grep, Read, Write, Edit, Delete).
+**Editor and vault context**: Select note text and use the nearby **Chat** action (or **MiMo: Add selection to chat**) to attach it explicitly; ordinary copy/paste does not add selection context. The active note, `@`-mentioned notes, and canvas / browser selections can also be sent with the turn. MiMo can list, search, read, write, and edit notes, and move them to Obsidian trash, using built-in vault tools (LS, Glob, Grep, Read, Write, Edit, Delete).
+
+**Web search**: Text-only chat turns can look up current public web results (weather, news, facts) via MiMo's built-in `web_search` tool. Image-upload turns stay vision-only; ask a text follow-up if you want web research about an image. Turn on the [Web Search Plugin](https://platform.xiaomimimo.com/console/plugin) in the MiMo console first — extra search fees apply. Toggle it under **Settings → MiMo**.
 
 ## Requirements
 
@@ -51,7 +53,7 @@ Chat commands (open chat, inline edit, new tab, new session, close tab) have no 
 | Model           | Description                                  |
 | --------------- | -------------------------------------------- |
 | `mimo-v2.5`     | Default. Chat plus image input.              |
-| `mimo-v2.5-pro` | Flagship — 1T params, 42B active, 1M context |
+| `mimo-v2.5-pro` | Flagship reasoning — text only, no images    |
 
 
 

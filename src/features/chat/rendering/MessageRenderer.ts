@@ -126,9 +126,10 @@ export class MessageRenderer {
    * Returns the message element for content updates.
    */
   addMessage(msg: ChatMessage): HTMLElement {
-    // Render images above message bubble for user messages
+    const userTurnEl = msg.role === 'user' ? this.createUserTurn() : null;
+
     if (msg.role === 'user' && msg.images && msg.images.length > 0) {
-      this.renderMessageImages(this.messagesEl, msg.images);
+      this.renderMessageImages(userTurnEl ?? this.messagesEl, msg.images);
     }
 
     // Skip empty bubble for image-only messages
@@ -136,12 +137,11 @@ export class MessageRenderer {
       const textToShow = this.getUserMessageTextToShow(msg);
       if (!textToShow) {
         this.scrollToBottom();
-        const lastChild = this.messagesEl.lastElementChild as HTMLElement;
-        return lastChild ?? this.messagesEl;
+        return userTurnEl ?? this.messagesEl;
       }
     }
 
-    const msgEl = this.messagesEl.createDiv({
+    const msgEl = (userTurnEl ?? this.messagesEl).createDiv({
       cls: `claudian-message claudian-message-${msg.role}`,
       attr: {
         'data-message-id': msg.id,
@@ -261,9 +261,10 @@ export class MessageRenderer {
       return;
     }
 
-    // Render images above bubble for user messages
+    const userTurnEl = msg.role === 'user' ? this.createUserTurn() : null;
+
     if (msg.role === 'user' && msg.images && msg.images.length > 0) {
-      this.renderMessageImages(this.messagesEl, msg.images);
+      this.renderMessageImages(userTurnEl ?? this.messagesEl, msg.images);
     }
 
     // Skip empty bubble for image-only messages
@@ -277,7 +278,7 @@ export class MessageRenderer {
       return;
     }
 
-    const msgEl = this.messagesEl.createDiv({
+    const msgEl = (userTurnEl ?? this.messagesEl).createDiv({
       cls: `claudian-message claudian-message-${msg.role}`,
       attr: {
         'data-message-id': msg.id,
@@ -582,6 +583,10 @@ export class MessageRenderer {
   // ============================================
   // Image Rendering
   // ============================================
+
+  private createUserTurn(): HTMLElement {
+    return this.messagesEl.createDiv({ cls: 'claudian-user-turn' });
+  }
 
   /**
    * Renders image attachments above a message.

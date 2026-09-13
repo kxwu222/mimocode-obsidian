@@ -2288,7 +2288,7 @@ describe('StreamController - Text Content', () => {
       jest.advanceTimersByTime(1000);
       expect(deps.state.flavorTimerInterval).not.toBeNull();
       // Verify the interval callback actually ran by checking the timer text was updated
-      expect((timerSpan as any).textContent).toContain('esc to interrupt');
+      expect((timerSpan as any).textContent).toContain('Stop or Esc');
 
       // Now simulate disconnection from DOM
       (timerSpan as any).isConnected = false;

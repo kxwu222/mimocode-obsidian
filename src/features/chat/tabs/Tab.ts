@@ -506,6 +506,7 @@ export function createTab(options: TabCreateOptions): TabData {
       imageContextManager: null,
       modelSelector: null,
       attachmentButton: null,
+      stopButton: null,
       modeSelector: null,
       thinkingBudgetSelector: null,
       externalContextSelector: null,
@@ -913,10 +914,14 @@ function initializeInputToolbar(
     onAttachImage: () => {
       tab.ui.imageContextManager?.pickImages();
     },
+    onStop: () => {
+      tab.controllers.inputController?.cancelStreaming();
+    },
   });
 
   tab.ui.modelSelector = toolbarComponents.modelSelector;
   tab.ui.attachmentButton = toolbarComponents.attachmentButton;
+  tab.ui.stopButton = toolbarComponents.stopButton;
   tab.ui.modeSelector = toolbarComponents.modeSelector;
   tab.ui.thinkingBudgetSelector = toolbarComponents.thinkingBudgetSelector;
   tab.ui.contextUsageMeter = toolbarComponents.contextUsageMeter;
@@ -997,14 +1002,20 @@ export function initializeTabUI(
   initializeInstructionAndTodo(tab, plugin);
   initializeInputToolbar(tab, plugin, options.getProviderCatalogConfig, options.onProviderChanged);
 
+  const notifyStreamingChanged = state.callbacks.onStreamingStateChanged;
   state.callbacks = {
     ...state.callbacks,
+    onStreamingStateChanged: (isStreaming) => {
+      notifyStreamingChanged?.(isStreaming);
+      tab.ui.stopButton?.setStreaming(isStreaming);
+    },
     onUsageChanged: (usage) => {
       tab.ui.contextUsageMeter?.update(usage);
     },
     onTodosChanged: (todos) => tab.ui.statusPanel?.updateTodos(todos),
     onAutoScrollChanged: () => tab.ui.navigationSidebar?.updateVisibility(),
   };
+  tab.ui.stopButton?.setStreaming(state.isStreaming);
 
   // ResizeObserver to detect overflow changes (e.g., content growth)
   const resizeObserver = new ResizeObserver(() => {
@@ -1300,6 +1311,7 @@ export function initializeTabControllers(
       getInputEl: () => dom.inputEl,
       getFileContextManager: () => ui.fileContextManager,
       getImageContextManager: () => ui.imageContextManager,
+      getSelectionController: () => tab.controllers.selectionController,
       getMcpServerSelector: () => ui.mcpServerSelector,
       getExternalContextSelector: () => ui.externalContextSelector,
       clearQueuedMessage: () => tab.controllers.inputController?.clearQueuedMessage(),

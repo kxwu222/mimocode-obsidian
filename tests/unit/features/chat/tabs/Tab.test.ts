@@ -114,6 +114,10 @@ const createMockAttachmentButton = () => ({
   setVisible: jest.fn(),
 });
 
+const createMockStopButton = () => ({
+  setStreaming: jest.fn(),
+});
+
 const createMockModelSelector = () => ({
   updateDisplay: jest.fn(),
   renderOptions: jest.fn(),
@@ -197,6 +201,7 @@ let mockBangBashModeManager: ReturnType<typeof createMockBangBashModeManager>;
 let mockStatusPanel: ReturnType<typeof createMockStatusPanel>;
 let mockModelSelector: ReturnType<typeof createMockModelSelector>;
 let mockAttachmentButton: ReturnType<typeof createMockAttachmentButton>;
+let mockStopButton: ReturnType<typeof createMockStopButton>;
 let mockModeSelector: ReturnType<typeof createMockModeSelector>;
 let mockThinkingBudgetSelector: ReturnType<typeof createMockThinkingBudgetSelector>;
 let mockContextUsageMeter: ReturnType<typeof createMockContextUsageMeter>;
@@ -278,6 +283,7 @@ jest.mock('@/features/chat/ui/InputToolbar', () => ({
   createInputToolbar: jest.fn().mockImplementation(() => {
     mockModelSelector = createMockModelSelector();
     mockAttachmentButton = createMockAttachmentButton();
+    mockStopButton = createMockStopButton();
     mockModeSelector = createMockModeSelector();
     mockThinkingBudgetSelector = createMockThinkingBudgetSelector();
     mockContextUsageMeter = createMockContextUsageMeter();
@@ -288,6 +294,7 @@ jest.mock('@/features/chat/ui/InputToolbar', () => ({
     return {
       modelSelector: mockModelSelector,
       attachmentButton: mockAttachmentButton,
+      stopButton: mockStopButton,
       modeSelector: mockModeSelector,
       thinkingBudgetSelector: mockThinkingBudgetSelector,
       contextUsageMeter: mockContextUsageMeter,
@@ -2377,6 +2384,18 @@ describe('Tab - UI Callback Wiring', () => {
   });
 
   describe('initializeTabUI callbacks', () => {
+    it('shows the stop button while a reply is generating', () => {
+      const onStreamingChanged = jest.fn();
+      const options = createMockOptions({ onStreamingChanged });
+      const tab = createTab(options);
+
+      initializeTabUI(tab, options.plugin);
+      tab.state.callbacks.onStreamingStateChanged?.(true);
+
+      expect(onStreamingChanged).toHaveBeenCalledWith(true);
+      expect(mockStopButton.setStreaming).toHaveBeenCalledWith(true);
+    });
+
     it('should wire onChipsChanged to scroll to bottom', () => {
       const options = createMockOptions();
       const tab = createTab(options);

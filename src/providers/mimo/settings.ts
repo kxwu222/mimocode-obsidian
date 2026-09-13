@@ -13,9 +13,12 @@ export const MIMO_CLUSTER_URLS: Record<MimoCluster, string> = {
   ams: 'https://token-plan-ams.xiaomimimo.com/v1',
 };
 
+/** Official image-understanding model. Pro is text-only and 404s on image_url. */
+export const MIMO_VISION_MODEL = 'mimo-v2.5';
+
 export const MIMO_MODELS = [
-  { value: 'mimo-v2.5-pro', label: 'MiMo V2.5 Pro', description: '1T params · 42B active · 1M context' },
-  { value: 'mimo-v2.5', label: 'MiMo V2.5', description: 'Default · image input' },
+  { value: 'mimo-v2.5-pro', label: 'MiMo V2.5 Pro', description: '1T params · text only' },
+  { value: MIMO_VISION_MODEL, label: 'MiMo V2.5', description: 'Default · can read images' },
 ] as const;
 
 export type MimoModelId = typeof MIMO_MODELS[number]['value'];
@@ -27,6 +30,8 @@ export interface PersistedMimoProviderSettings {
   /** Only used when billingMode is 'token-plan'. */
   cluster: MimoCluster;
   model: string;
+  /** Send MiMo's built-in web_search tool. Extra console plugin fees apply. */
+  webSearch: boolean;
 }
 
 export const DEFAULT_MIMO_PROVIDER_SETTINGS: Readonly<PersistedMimoProviderSettings> = Object.freeze({
@@ -35,6 +40,7 @@ export const DEFAULT_MIMO_PROVIDER_SETTINGS: Readonly<PersistedMimoProviderSetti
   apiKey: '',
   cluster: 'ams',
   model: 'mimo-v2.5',
+  webSearch: false,
 });
 
 export function getMimoProviderSettings(settings: Record<string, unknown>): PersistedMimoProviderSettings {
@@ -45,6 +51,9 @@ export function getMimoProviderSettings(settings: Record<string, unknown>): Pers
     apiKey: (config.apiKey as string | undefined) ?? DEFAULT_MIMO_PROVIDER_SETTINGS.apiKey,
     cluster: normalizeMimoCluster(config.cluster),
     model: normalizeMimoModel(config.model),
+    webSearch: typeof config.webSearch === 'boolean'
+      ? config.webSearch
+      : DEFAULT_MIMO_PROVIDER_SETTINGS.webSearch,
   };
 }
 
@@ -59,6 +68,7 @@ export function updateMimoProviderSettings(
     apiKey: updates.apiKey ?? current.apiKey,
     cluster: updates.cluster ?? current.cluster,
     model: updates.model ?? current.model,
+    webSearch: updates.webSearch ?? current.webSearch,
   });
 }
 
@@ -72,6 +82,17 @@ export function getMimoBaseUrl(
 
 export function isMimoModel(value: string): boolean {
   return value.startsWith('mimo-');
+}
+
+export function mimoModelSupportsImageInput(model: string): boolean {
+  return model === MIMO_VISION_MODEL;
+}
+
+export function resolveMimoChatModel(selectedModel: string, hasImages: boolean): string {
+  if (hasImages && !mimoModelSupportsImageInput(selectedModel)) {
+    return MIMO_VISION_MODEL;
+  }
+  return selectedModel;
 }
 
 function normalizeMimoBillingMode(value: unknown): MimoBillingMode {

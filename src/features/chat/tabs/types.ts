@@ -25,6 +25,7 @@ import type {
   ModeSelector,
   PermissionToggle,
   ServiceTierToggle,
+  StopButton,
   ThinkingBudgetSelector,
 } from '../ui/InputToolbar';
 import type { InstructionModeManager } from '../ui/InstructionModeManager';
@@ -119,6 +120,7 @@ export interface TabUIComponents {
   imageContextManager: ImageContextManager | null;
   modelSelector: ModelSelector | null;
   attachmentButton: AttachmentButton | null;
+  stopButton: StopButton | null;
   modeSelector: ModeSelector | null;
   thinkingBudgetSelector: ThinkingBudgetSelector | null;
   externalContextSelector: ExternalContextSelector | null;

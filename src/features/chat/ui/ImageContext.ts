@@ -12,6 +12,7 @@ const IMAGE_EXTENSIONS: Record<string, ImageMediaType> = {
   '.gif': 'image/gif',
   '.webp': 'image/webp',
 };
+const IMAGE_MEDIA_TYPES = new Set<ImageMediaType>(Object.values(IMAGE_EXTENSIONS));
 
 export interface ImageContextCallbacks {
   onImagesChanged: () => void;
@@ -111,7 +112,7 @@ export class ImageContextManager {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (this.isImageFile(file) || this.getMediaType(file.name)) {
+      if (this.isImageFile(file)) {
         await this.addImageFromFile(file, 'file');
       }
     }
@@ -231,12 +232,25 @@ export class ImageContextManager {
   }
 
   private isImageFile(file: File): boolean {
-    return file.type.startsWith('image/') && this.getMediaType(file.name) !== null;
+    return this.resolveMediaType(file) !== null;
   }
 
   private getMediaType(filename: string): ImageMediaType | null {
     const ext = path.extname(filename).toLowerCase();
     return IMAGE_EXTENSIONS[ext] || null;
+  }
+
+  private resolveMediaType(file: Pick<File, 'name' | 'type'>): ImageMediaType | null {
+    const extensionType = this.getMediaType(file.name);
+    const declaredType = IMAGE_MEDIA_TYPES.has(file.type as ImageMediaType)
+      ? file.type as ImageMediaType
+      : null;
+
+    // A declared but unsupported image type (for example SVG/BMP) must not
+    // fall back to a misleading filename extension.
+    if (file.type && !declaredType) return null;
+    if (declaredType && extensionType && declaredType !== extensionType) return null;
+    return declaredType ?? extensionType;
   }
 
   private async addImageFromFile(file: File, source: ImageAttachment['source']): Promise<boolean> {
@@ -250,7 +264,12 @@ export class ImageContextManager {
       return false;
     }
 
-    const mediaType = this.getMediaType(file.name) || (file.type as ImageMediaType);
+    if (file.size === 0) {
+      this.notifyImageError('Image is empty.');
+      return false;
+    }
+
+    const mediaType = this.resolveMediaType(file);
     if (!mediaType) {
       this.notifyImageError('Unsupported image type.');
       return false;
@@ -258,6 +277,10 @@ export class ImageContextManager {
 
     try {
       const base64 = await this.fileToBase64(file);
+      if (!base64) {
+        this.notifyImageError('Image is empty.');
+        return false;
+      }
 
       const attachment: ImageAttachment = {
         id: this.generateId(),

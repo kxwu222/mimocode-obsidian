@@ -32,7 +32,7 @@ export interface PendingToolCall {
   parentEl: HTMLElement | null;
 }
 
-/** Stored selection state from editor polling. */
+/** Editor selection explicitly attached to a chat composer. */
 export interface StoredSelection {
   notePath: string;
   selectedText: string;

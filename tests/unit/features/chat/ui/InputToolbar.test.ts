@@ -10,6 +10,7 @@ import {
   ModeSelector,
   PermissionToggle,
   ServiceTierToggle,
+  StopButton,
   ThinkingBudgetSelector,
 } from '@/features/chat/ui/InputToolbar';
 import {
@@ -158,6 +159,7 @@ function createMockCallbacks(overrides: Record<string, any> = {}) {
     onServiceTierChange: jest.fn().mockResolvedValue(undefined),
     onPermissionModeChange: jest.fn().mockResolvedValue(undefined),
     onAttachImage: jest.fn(),
+    onStop: jest.fn(),
     getSettings: jest.fn().mockReturnValue({
       model: 'sonnet',
       thinkingBudget: 'low',
@@ -1147,6 +1149,7 @@ describe('createInputToolbar', () => {
 
     expect(toolbar.modelSelector).toBeInstanceOf(ModelSelector);
     expect(toolbar.attachmentButton).toBeInstanceOf(AttachmentButton);
+    expect(toolbar.stopButton).toBeInstanceOf(StopButton);
     expect(toolbar.modeSelector).toBeInstanceOf(ModeSelector);
     expect(toolbar.thinkingBudgetSelector).toBeInstanceOf(ThinkingBudgetSelector);
     expect(toolbar.contextUsageMeter).toBeInstanceOf(ContextUsageMeter);
@@ -1163,9 +1166,11 @@ describe('createInputToolbar', () => {
 
     const permissionIndex = parentEl.children.findIndex((child: any) => child.hasClass('claudian-permission-toggle'));
     const modeIndex = parentEl.children.findIndex((child: any) => child.hasClass('claudian-mode-selector'));
+    const stopIndex = parentEl.children.findIndex((child: any) => child.hasClass('claudian-stop-btn'));
     expect(permissionIndex).toBeGreaterThanOrEqual(0);
     expect(modeIndex).toBeGreaterThan(permissionIndex);
-    expect(modeIndex).toBe(parentEl.children.length - 1);
+    expect(stopIndex).toBeGreaterThan(modeIndex);
+    expect(stopIndex).toBe(parentEl.children.length - 1);
   });
 
   it('should place the attach button immediately after the model selector', () => {
@@ -1199,5 +1204,36 @@ describe('AttachmentButton', () => {
     const el = parentEl.querySelector('.claudian-attach-btn');
     button.setVisible(false);
     expect(el?.hasClass('claudian-hidden')).toBe(true);
+  });
+});
+
+describe('StopButton', () => {
+  it('stays hidden until a reply is generating', () => {
+    const parentEl = createMockEl();
+    const button = new StopButton(parentEl, createMockCallbacks());
+    const el = parentEl.querySelector('.claudian-stop-btn');
+
+    expect(el?.hasClass('claudian-hidden')).toBe(true);
+    button.setStreaming(true);
+    expect(el?.hasClass('claudian-hidden')).toBe(false);
+    button.setStreaming(false);
+    expect(el?.hasClass('claudian-hidden')).toBe(true);
+  });
+
+  it('is a labelled native button and stops click propagation', () => {
+    const parentEl = createMockEl();
+    const callbacks = createMockCallbacks();
+    new StopButton(parentEl, callbacks);
+
+    const button = parentEl.querySelector('.claudian-stop-btn');
+    expect(button?.tagName).toBe('BUTTON');
+    expect(button?.getAttribute('type')).toBe('button');
+    expect(button?.getAttribute('aria-label')).toBe('Stop');
+    expect(button?.getAttribute('title')).toBe('Stop generating');
+
+    const stopPropagation = jest.fn();
+    button?._eventListeners.get('click')?.[0]?.({ stopPropagation });
+    expect(stopPropagation).toHaveBeenCalled();
+    expect(callbacks.onStop).toHaveBeenCalled();
   });
 });

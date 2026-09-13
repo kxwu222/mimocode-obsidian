@@ -78,6 +78,7 @@ export interface ToolbarCallbacks {
   onServiceTierChange: (serviceTier: string) => Promise<void>;
   onPermissionModeChange: (mode: string) => Promise<void>;
   onAttachImage?: () => void;
+  onStop?: () => void;
   getSettings: () => ToolbarSettings;
   getEnvironmentVariables?: () => string;
   getUIConfig: () => ProviderChatUIConfig;
@@ -205,6 +206,30 @@ export class AttachmentButton {
 
   setVisible(visible: boolean): void {
     this.container.toggleClass('claudian-hidden', !visible);
+  }
+}
+
+export class StopButton {
+  private readonly buttonEl: HTMLElement;
+
+  constructor(parentEl: HTMLElement, callbacks: ToolbarCallbacks) {
+    this.buttonEl = parentEl.createEl('button', {
+      cls: 'claudian-stop-btn claudian-hidden',
+      attr: {
+        type: 'button',
+        'aria-label': 'Stop',
+        title: 'Stop generating',
+      },
+    });
+    setIcon(this.buttonEl, 'square');
+    this.buttonEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      callbacks.onStop?.();
+    });
+  }
+
+  setStreaming(isStreaming: boolean): void {
+    this.buttonEl.toggleClass('claudian-hidden', !isStreaming);
   }
 }
 
@@ -1256,6 +1281,7 @@ export function createInputToolbar(
   mcpServerSelector: McpServerSelector;
   permissionToggle: PermissionToggle;
   serviceTierToggle: ServiceTierToggle;
+  stopButton: StopButton;
 } {
   const modelSelector = new ModelSelector(parentEl, callbacks);
   const attachmentButton = new AttachmentButton(parentEl, callbacks);
@@ -1266,6 +1292,7 @@ export function createInputToolbar(
   const mcpServerSelector = new McpServerSelector(parentEl);
   const permissionToggle = new PermissionToggle(parentEl, callbacks);
   const modeSelector = new ModeSelector(parentEl, callbacks);
+  const stopButton = new StopButton(parentEl, callbacks);
 
   return {
     modelSelector,
@@ -1277,5 +1304,6 @@ export function createInputToolbar(
     externalContextSelector,
     mcpServerSelector,
     permissionToggle,
+    stopButton,
   };
 }

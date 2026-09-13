@@ -25,6 +25,7 @@ function createMockDeps(overrides: Partial<ConversationControllerDeps> = {}): Co
     setCurrentNote: jest.fn(),
     getCurrentNotePath: jest.fn().mockReturnValue(null),
   };
+  const selectionController = { clear: jest.fn() };
 
   return {
     plugin: {
@@ -78,6 +79,7 @@ function createMockDeps(overrides: Partial<ConversationControllerDeps> = {}): Co
     getImageContextManager: () => ({
       clearImages: jest.fn(),
     }) as any,
+    getSelectionController: () => selectionController as any,
     getMcpServerSelector: () => ({
       clearEnabled: jest.fn(),
       getEnabledServers: jest.fn().mockResolvedValue(new Set()),
@@ -117,6 +119,7 @@ describe('ConversationController', () => {
         await controller.createNew();
 
         expect(deps.clearQueuedMessage).toHaveBeenCalled();
+        expect(deps.getSelectionController?.()?.clear).toHaveBeenCalled();
       });
 
       it('should not create new conversation while streaming', async () => {
@@ -190,6 +193,7 @@ describe('ConversationController', () => {
         await controller.switchTo('new-conv');
 
         expect(deps.clearQueuedMessage).toHaveBeenCalled();
+        expect(deps.getSelectionController?.()?.clear).toHaveBeenCalled();
       });
 
       it('should not switch while streaming', async () => {

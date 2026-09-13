@@ -243,8 +243,10 @@ describe('MessageRenderer', () => {
     renderer.renderStoredMessage(msg);
 
     expect(messagesEl.children.length).toBe(1);
-    const msgEl = messagesEl.children[0];
-    expect(msgEl.hasClass('claudian-message-user')).toBe(true);
+    const turnEl = messagesEl.children[0];
+    expect(turnEl.hasClass('claudian-user-turn')).toBe(true);
+    const msgEl = turnEl.querySelector('.claudian-message-user');
+    expect(msgEl).not.toBeNull();
   });
 
   it('renders user message with displayContent instead of content', () => {
@@ -326,7 +328,8 @@ describe('MessageRenderer', () => {
 
     renderer.renderStoredMessage(msg);
 
-    expect(renderImagesSpy).toHaveBeenCalledWith(messagesEl, images);
+    expect(renderImagesSpy).toHaveBeenCalledWith(expect.anything(), images);
+    expect(renderImagesSpy.mock.calls[0][0].hasClass('claudian-user-turn')).toBe(true);
   });
 
   it('adds a rewind button for eligible stored user messages', () => {
@@ -1118,7 +1121,8 @@ describe('MessageRenderer', () => {
 
     renderer.addMessage(msg);
 
-    expect(renderImagesSpy).toHaveBeenCalledWith(messagesEl, images);
+    expect(renderImagesSpy).toHaveBeenCalledWith(expect.anything(), images);
+    expect(renderImagesSpy.mock.calls[0][0].hasClass('claudian-user-turn')).toBe(true);
   });
 
   it('addMessage skips empty bubble for image-only user messages', () => {

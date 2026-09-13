@@ -150,15 +150,19 @@
   flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
-  margin-bottom: 6px;
-  padding-right: 4px;
+  max-width: 100%;
+}
+
+.claudian-user-turn .claudian-message-images {
+  margin-bottom: 0;
+  padding-inline-end: 0;
 }
 
 /* Individual image in message - standardized size */
 .claudian-message-image {
   width: 120px;
   height: 120px;
-  border-radius: 8px;
+  border-radius: 12px;
   overflow: hidden;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease;

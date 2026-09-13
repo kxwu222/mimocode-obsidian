@@ -338,6 +338,16 @@ describe('ImageContextManager - Private Helpers', () => {
       const file = { type: 'image/bmp', name: 'test.bmp' } as File;
       expect(manager['isImageFile'](file)).toBe(false);
     });
+
+    it('should accept an extensionless screenshot with a supported MIME type', () => {
+      const file = { type: 'image/png', name: 'Screenshot' } as File;
+      expect(manager['isImageFile'](file)).toBe(true);
+    });
+
+    it('should reject a MIME type that conflicts with the filename', () => {
+      const file = { type: 'image/jpeg', name: 'spoofed.png' } as File;
+      expect(manager['isImageFile'](file)).toBe(false);
+    });
   });
 
   describe('generateId', () => {
@@ -469,9 +479,8 @@ describe('ImageContextManager - Private Helpers', () => {
       expect(images[0].name).toMatch(/^image-\d+\.png$/);
     });
 
-    it('should use file.type as fallback media type when getMediaType returns null', async () => {
+    it('should reject unsupported image MIME types instead of casting them', async () => {
       const mockBuffer = new ArrayBuffer(4);
-      // File with .svg extension (not in IMAGE_EXTENSIONS), but valid image/* type
       const file = {
         name: 'icon.svg',
         type: 'image/svg+xml',
@@ -479,17 +488,29 @@ describe('ImageContextManager - Private Helpers', () => {
         arrayBuffer: jest.fn().mockResolvedValue(mockBuffer),
       } as unknown as File;
 
-      // The getMediaType for .svg returns null, so file.type is used as fallback
       const callbacks = createMockCallbacks();
       const { container } = createContainerWithInputWrapper();
       const inputEl = createMockTextArea();
       const mgr: any = new ImageContextManager(container, inputEl, callbacks);
 
       const result = await mgr['addImageFromFile'](file, 'paste');
-      expect(result).toBe(true);
+      expect(result).toBe(false);
+      expect(mgr.getAttachedImages()).toEqual([]);
+      expect(Notice).toHaveBeenCalledWith('Unsupported image type.');
+    });
 
-      const images = mgr.getAttachedImages();
-      expect(images[0].mediaType).toBe('image/svg+xml');
+    it('should reject an empty image before reading it', async () => {
+      const file = {
+        name: 'empty.png',
+        type: 'image/png',
+        size: 0,
+        arrayBuffer: jest.fn(),
+      } as unknown as File;
+
+      const result = await manager['addImageFromFile'](file, 'paste');
+      expect(result).toBe(false);
+      expect(file.arrayBuffer).not.toHaveBeenCalled();
+      expect(Notice).toHaveBeenCalledWith('Image is empty.');
     });
   });
 
@@ -566,6 +587,21 @@ describe('ImageContextManager - Private Helpers', () => {
       expect(manager['dropOverlay']?.hasClass('visible')).toBe(false);
       expect(addImageSpy).toHaveBeenCalledWith(mockFile, 'drop');
 
+      addImageSpy.mockRestore();
+    });
+
+    it('handleDrop should process an extensionless supported screenshot', async () => {
+      const addImageSpy = jest.spyOn(manager as any, 'addImageFromFile').mockResolvedValue(true);
+      const screenshot = { type: 'image/png', name: 'Screenshot', size: 1024 };
+      const event = {
+        preventDefault: jest.fn(),
+        stopPropagation: jest.fn(),
+        dataTransfer: { files: { length: 1, 0: screenshot } },
+      };
+
+      await manager['handleDrop'](event as any);
+
+      expect(addImageSpy).toHaveBeenCalledWith(screenshot, 'drop');
       addImageSpy.mockRestore();
     });
 

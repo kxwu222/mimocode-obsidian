@@ -26,33 +26,75 @@ import { appendCurrentNote } from '../../../utils/context';
 import { getLocalIsoDate, getTodayDate } from '../../../utils/date';
 import { appendEditorContext } from '../../../utils/editor';
 import { MIMO_PROVIDER_CAPABILITIES } from '../capabilities';
-import { getMimoBaseUrl, getMimoProviderSettings, isMimoModel } from '../settings';
+import { getMimoBaseUrl, getMimoProviderSettings, isMimoModel, resolveMimoChatModel } from '../settings';
 import {
   buildMimoMessages,
+  mimoCurrentTurnHasImages,
   type MimoMessage,
   type MimoToolCall,
+  mimoTurnHasImages,
 } from './buildMimoMessages';
+import {
+  buildMimoChatTools,
+  emitMimoWebSearchChunks,
+  hasMimoWebSearchTool,
+  isMimoServerSearchTool,
+  type MimoChatTool,
+} from './mimoChatTools';
 import { parseMimoCompletion, parseToolArguments } from './parseMimoCompletion';
 import { applyVaultNoteSnippets, loadVaultNoteSnippets } from './vaultNoteContext';
 import {
   executeVaultTool,
   isMimoVaultTool,
-  MIMO_VAULT_TOOLS,
   type VaultToolContext,
 } from './vaultTools';
 
 const MAX_VAULT_TOOL_ROUNDS = 8;
 
-export function buildMimoSystemPrompt(): string {
+export function isMimoWebSearchUnavailable(status: number, body: string): boolean {
+  return (status === 400 || status === 403 || status === 422)
+    && /web[_\s-]?search|联网服务/i.test(body);
+}
+
+export function formatMimoWebSearchFallbackNotice(body: string): string {
+  const tokenPlanHint = /webSearchEnabled is false/i.test(body)
+    ? ' Xiaomi returned webSearchEnabled is false — Token Plan (tp-) clusters often reject search even when Settings → MiMo is on.'
+    : '';
+  return 'Xiaomi refused web search on this API key.'
+    + tokenPlanHint
+    + ' Settings → MiMo only asks for search; the Web Search Plugin must also be on for a pay-as-you-go (sk-) key.'
+    + ' Answering without it.';
+}
+
+export function formatMimoHttpError(status: number, body: string): string {
+  if (status === 404 && /image input/i.test(body)) {
+    return 'MiMo cannot read this image. Only mimo-v2.5 accepts images — Pro is text-only. '
+      + 'Switch the chat model to MiMo V2.5 and send the image again.';
+  }
+  if (isMimoWebSearchUnavailable(status, body)) {
+    return 'MiMo web search is not available on this key. Enable the Web Search Plugin in the MiMo console, '
+      + 'or turn off Web search in Settings → MiMo.';
+  }
+  return `MiMo API error ${status}: ${body}`.trim();
+}
+
+export function buildMimoSystemPrompt(options?: { webSearch?: boolean }): string {
   const iso = getLocalIsoDate();
+  const webSearch = options?.webSearch
+    ? 'You can search the public web for current facts when needed. Prefer vault tools for notes. '
+    : '';
+  const fileScope = options?.webSearch
+    ? 'Stay inside the vault for file tools and only touch text notes. Web search is allowed for current public facts.'
+    : 'Stay inside the vault and only touch text notes.';
   return 'You are MiMo, an AI assistant developed by Xiaomi, working inside the user\'s Obsidian vault. '
     + `Today is ${getTodayDate()}. For daily notes and dated filenames, use ${iso}. Do not invent an older date. `
     + 'When a message includes <linked_note> or <attached_note> blocks, those blocks contain the full note text. '
     + 'Use that text directly. You can browse and change the vault with the Read, LS, Glob, Grep, Write, Edit, and Delete tools. '
     + 'Use those tools when the user asks about notes you have not been given, or when they ask you to create, update, or trash notes. '
+    + webSearch
     + 'When you mention a vault note in your reply, write it as an Obsidian wikilink such as [[folder/note.md]] so it is clickable. '
     + 'Do not wrap those wikilinks in backticks. Delete moves a note to Obsidian trash; it is not a permanent delete. '
-    + 'Stay inside the vault and only touch text notes.';
+    + fileScope;
 }
 
 function isAbortError(error: unknown): boolean {
@@ -142,18 +184,27 @@ export class MimoChatRuntime implements ChatRuntime {
     const { signal } = this.abortController;
 
     const prompt = await this.applyVaultNoteContext(turn);
-    const messages = buildMimoMessages({ ...turn, prompt }, conversationHistory, buildMimoSystemPrompt());
+    const preparedTurn = { ...turn, prompt };
+    const currentTurnHasImages = mimoCurrentTurnHasImages(preparedTurn);
+    const webSearchEnabledForTurn = mimoSettings.webSearch && !currentTurnHasImages;
+    const messages = buildMimoMessages(
+      preparedTurn,
+      conversationHistory,
+      buildMimoSystemPrompt({ webSearch: webSearchEnabledForTurn }),
+    );
 
     const rawModel = typeof settings.model === 'string' ? settings.model.trim() : '';
     const selectedModel = rawModel && isMimoModel(rawModel) ? rawModel : mimoSettings.model;
+    const model = resolveMimoChatModel(selectedModel, mimoTurnHasImages(preparedTurn, conversationHistory));
     const baseUrl = getMimoBaseUrl(mimoSettings);
 
     try {
       yield* this._runAgentLoop(
         baseUrl,
         mimoSettings.apiKey,
-        selectedModel,
+        model,
         messages,
+        buildMimoChatTools(webSearchEnabledForTurn),
         signal,
       );
     } finally {
@@ -212,32 +263,50 @@ export class MimoChatRuntime implements ChatRuntime {
     apiKey: string,
     model: string,
     messages: MimoMessage[],
+    tools: MimoChatTool[],
     signal: AbortSignal,
   ): AsyncGenerator<StreamChunk> {
     let inputTokens = 0;
     let outputTokens = 0;
+    let requestTools = tools;
     const vaultTools = this.createVaultToolContext();
 
     for (let round = 0; round < MAX_VAULT_TOOL_ROUNDS; round++) {
-      const completion = yield* this.completeOnce(
+      const result = yield* this.completeOnce(
         baseUrl,
         apiKey,
         model,
         messages,
+        requestTools,
         signal,
       );
-      if (!completion) {
+      if (!result) {
         return;
       }
 
+      requestTools = result.tools;
+      const { completion } = result;
       inputTokens = completion.usage.prompt_tokens || inputTokens;
       outputTokens += completion.usage.completion_tokens;
+
+      const vaultCalls = completion.toolCalls.filter((call) => isMimoVaultTool(call.function.name));
+      const serverSearchCalls = completion.toolCalls.filter((call) => (
+        isMimoServerSearchTool(call.function.name)
+      ));
+      const searchQuery = parseToolArguments(serverSearchCalls[0]?.function.arguments ?? '').query;
+
+      yield* emitMimoWebSearchChunks(
+        completion.annotations,
+        completion.webSearchError,
+        `mimo-web-search-${round}`,
+        typeof searchQuery === 'string' ? searchQuery : undefined,
+      );
 
       if (completion.text) {
         yield { type: 'text', content: completion.text };
       }
 
-      if (completion.toolCalls.length === 0) {
+      if (vaultCalls.length === 0) {
         const totalTokens = inputTokens + outputTokens;
         if (totalTokens > 0) {
           const contextWindow = 1_000_000;
@@ -259,10 +328,10 @@ export class MimoChatRuntime implements ChatRuntime {
       messages.push({
         role: 'assistant',
         content: completion.text || null,
-        tool_calls: completion.toolCalls,
+        tool_calls: vaultCalls,
       });
 
-      for (const toolCall of completion.toolCalls) {
+      for (const toolCall of vaultCalls) {
         yield* this.executeToolCall(toolCall, vaultTools, messages);
       }
     }
@@ -276,56 +345,74 @@ export class MimoChatRuntime implements ChatRuntime {
     apiKey: string,
     model: string,
     messages: MimoMessage[],
+    tools: MimoChatTool[],
     signal: AbortSignal,
-  ): AsyncGenerator<StreamChunk, ReturnType<typeof parseMimoCompletion> | null> {
-    const body: Record<string, unknown> = {
-      model,
-      messages,
-      stream: true,
-      max_completion_tokens: 32768,
-      tools: MIMO_VAULT_TOOLS,
-    };
+  ): AsyncGenerator<StreamChunk, { completion: ReturnType<typeof parseMimoCompletion>; tools: MimoChatTool[] } | null> {
+    let requestTools = tools;
+    let sseText = '';
 
-    let sseText: string;
-    try {
-      const response = await Promise.race([
-        requestUrl({
-          url: `${baseUrl}/chat/completions`,
-          method: 'POST',
-          headers: {
-            'api-key': apiKey,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-          throw: false,
-        }),
-        abortAsError(signal),
-      ]);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const body: Record<string, unknown> = {
+        model,
+        messages,
+        stream: true,
+        max_completion_tokens: 32768,
+        tools: requestTools,
+      };
 
-      if (signal.aborted) {
-        yield { type: 'done' };
-        return null;
-      }
+      try {
+        const response = await Promise.race([
+          requestUrl({
+            url: `${baseUrl}/chat/completions`,
+            method: 'POST',
+            headers: {
+              'api-key': apiKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(body),
+            throw: false,
+          }),
+          abortAsError(signal),
+        ]);
 
-      if (response.status < 200 || response.status >= 300) {
+        if (signal.aborted) {
+          yield { type: 'done' };
+          return null;
+        }
+
+        if (response.status >= 200 && response.status < 300) {
+          sseText = response.text ?? '';
+          break;
+        }
+
+        const canRetry = attempt === 0
+          && hasMimoWebSearchTool(requestTools)
+          && isMimoWebSearchUnavailable(response.status, response.text || '');
+        if (canRetry) {
+          yield {
+            type: 'notice',
+            content: formatMimoWebSearchFallbackNotice(response.text || ''),
+          };
+          requestTools = buildMimoChatTools(false);
+          continue;
+        }
+
         yield {
           type: 'error',
-          content: `MiMo API error ${response.status}: ${response.text || ''}`.trim(),
+          content: formatMimoHttpError(response.status, response.text || ''),
         };
         yield { type: 'done' };
         return null;
-      }
-
-      sseText = response.text ?? '';
-    } catch (error) {
-      if (signal.aborted || isAbortError(error)) {
+      } catch (error) {
+        if (signal.aborted || isAbortError(error)) {
+          yield { type: 'done' };
+          return null;
+        }
+        const message = error instanceof Error ? error.message : 'Network error';
+        yield { type: 'error', content: `MiMo request failed: ${message}` };
         yield { type: 'done' };
         return null;
       }
-      const message = error instanceof Error ? error.message : 'Network error';
-      yield { type: 'error', content: `MiMo request failed: ${message}` };
-      yield { type: 'done' };
-      return null;
     }
 
     if (!sseText) {
@@ -334,7 +421,7 @@ export class MimoChatRuntime implements ChatRuntime {
       return null;
     }
 
-    return parseMimoCompletion(sseText);
+    return { completion: parseMimoCompletion(sseText), tools: requestTools };
   }
 
   private async *executeToolCall(
