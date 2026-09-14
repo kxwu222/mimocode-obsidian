@@ -349,6 +349,26 @@ describe('MessageRenderer', () => {
     expect(messagesEl.querySelector('.claudian-message-rewind-btn')).not.toBeNull();
   });
 
+  it('marks user messages with the actions modifier class when a toolbar exists', () => {
+    const messagesEl = createMockEl();
+    const renderer = new MessageRenderer({ app: {}, settings: { mediaFolder: '' } } as any, createMockComponent() as any, messagesEl, undefined, undefined, mockCapabilities());
+    jest.spyOn(renderer, 'renderContent').mockResolvedValue(undefined);
+
+    const msg: ChatMessage = {
+      id: 'u1',
+      role: 'user',
+      content: 'hello',
+      timestamp: 1,
+    };
+
+    renderer.renderStoredMessage(msg);
+
+    const msgEl = messagesEl.querySelector('.claudian-message-user');
+    expect(msgEl).not.toBeNull();
+    expect(msgEl!.querySelector('.claudian-user-msg-actions')).not.toBeNull();
+    expect(msgEl!.hasClass('claudian-message-user--with-actions')).toBe(true);
+  });
+
   it('adds rewind but not fork for a completed first user message', () => {
     const messagesEl = createMockEl();
     const rewindCallback = jest.fn().mockResolvedValue(undefined);

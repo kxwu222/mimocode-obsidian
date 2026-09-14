@@ -39,16 +39,20 @@ class ConfirmModal extends Modal {
           .setButtonText(t('common.cancel'))
           .onClick(() => this.close())
       )
-      .addButton(btn =>
+      .addButton((btn) => {
         btn
           .setButtonText(this.confirmText)
-          .setWarning()
           .onClick(() => {
             this.resolved = true;
             this.resolve(true);
             this.close();
-          })
-      );
+          });
+        // ButtonComponent.setWarning() is deprecated and its replacement
+        // (setDestructive) requires Obsidian 1.13.0+, while this plugin
+        // supports older versions. Apply the same stable styling class
+        // directly so the destructive look works on every supported version.
+        btn.buttonEl.addClass('mod-warning');
+      });
   }
 
   onClose() {

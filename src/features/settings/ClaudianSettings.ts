@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import type { App, SettingDefinitionItem } from 'obsidian';
 import { Notice, Platform, PluginSettingTab, Setting } from 'obsidian';
 
 import {
@@ -117,11 +117,20 @@ export class ClaudianSettingTab extends PluginSettingTab {
    * Keep it empty so the custom General / MiMo tabs (API key, billing, cluster)
    * still render from display().
    */
-  getSettingDefinitions(): unknown[] {
+  getSettingDefinitions(): SettingDefinitionItem[] {
     return [];
   }
 
   display(): void {
+    this.renderTab();
+  }
+
+  /**
+   * Re-renders the tab. Internal callers use this instead of the deprecated
+   * SettingTab.display() so the same path serves Obsidian versions older than
+   * 1.13.0, where display() remains the documented rendering fallback.
+   */
+  private renderTab(): void {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.addClass('claudian-settings');
@@ -207,7 +216,7 @@ export class ClaudianSettingTab extends PluginSettingTab {
             }
             this.plugin.settings.locale = locale;
             await this.plugin.saveSettings();
-            this.display();
+            this.renderTab();
           });
       });
 
@@ -232,7 +241,6 @@ export class ClaudianSettingTab extends PluginSettingTab {
       slider
         .setLimits(3, 10, 1)
         .setValue(this.plugin.settings.maxTabs ?? 3)
-        .setDynamicTooltip()
         .onChange(async (value) => {
           this.plugin.settings.maxTabs = value;
           await this.plugin.saveSettings();
@@ -296,7 +304,7 @@ export class ClaudianSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.enableAutoTitleGeneration = value;
             await this.plugin.saveSettings();
-            this.display();
+            this.renderTab();
           })
       );
 

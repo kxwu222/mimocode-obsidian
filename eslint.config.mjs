@@ -45,8 +45,8 @@ const stagedObsidianRules = {
   'obsidianmd/ui/sentence-case': [
     obsidianRuleSeverity,
     {
-      ignoreWords: ['Claudian', 'Codex', 'OpenCode', 'Pi', 'WSL'],
-      brands: [...DEFAULT_BRANDS, 'Claudian', 'Codex', 'OpenCode', 'Pi'],
+      ignoreWords: ['Claudian', 'Codex', 'MiMo', 'OpenCode', 'Pi', 'WSL'],
+      brands: [...DEFAULT_BRANDS, 'Claudian', 'Codex', 'MiMo', 'OpenCode', 'Pi'],
       acronyms: [...DEFAULT_ACRONYMS, 'TOML', 'WSL'],
       ignoreRegex: ['\\.(?:claude|codex|opencode)/'],
       enforceCamelCaseLower: true,
@@ -71,6 +71,22 @@ export default defineConfig([
     },
   },
   ...tseslint.configs['flat/recommended'],
+  // Type-aware rules for production code only, mirroring the type-checked
+  // ruleset Obsidian's review scanner runs. Requires parserOptions.project,
+  // which is set in the src block below.
+  ...tseslint.configs['flat/recommended-type-checked'].map((config) => ({
+    ...config,
+    files: ['src/**/*.ts'],
+  })),
+  {
+    files: ['src/**/*.ts'],
+    rules: {
+      // eslint-plugin-obsidianmd's recommended preset explicitly disables
+      // require-await; keep parity with the scanner instead of churning
+      // interface-mandated async signatures.
+      '@typescript-eslint/require-await': 'off',
+    },
+  },
   {
     files: ['src/**/*.ts', 'tests/**/*.ts'],
     plugins: {

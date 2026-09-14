@@ -827,6 +827,9 @@ export class MessageRenderer {
   }
 
   private getOrCreateActionsToolbar(msgEl: HTMLElement): HTMLElement {
+    // Drives the .claudian-message-user--with-actions margin in CSS without
+    // relying on a :has() selector.
+    msgEl.addClass('claudian-message-user--with-actions');
     const existing = msgEl.querySelector<HTMLElement>('.claudian-user-msg-actions');
     if (existing) return existing;
     return msgEl.createDiv({ cls: 'claudian-user-msg-actions' });

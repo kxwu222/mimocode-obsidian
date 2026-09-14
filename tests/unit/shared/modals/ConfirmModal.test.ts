@@ -44,8 +44,8 @@ jest.mock('obsidian', () => {
     addButton(cb: (btn: any) => void) {
       const btn: any = {
         _onClick: null as null | (() => void),
+        buttonEl: createMockEl(),
         setButtonText: jest.fn().mockReturnThis(),
-        setWarning: jest.fn().mockReturnThis(),
         onClick: jest.fn((handler: () => void) => {
           btn._onClick = handler;
           return btn;
@@ -102,6 +102,7 @@ describe('ConfirmModal', () => {
     expect(createdButtons).toHaveLength(2);
     const confirmBtn = createdButtons[1];
     expect(confirmBtn.setButtonText).toHaveBeenLastCalledWith('Confirm');
+    expect(confirmBtn.buttonEl.hasClass('mod-warning')).toBe(true);
 
     confirmBtn._onClick();
 

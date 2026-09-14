@@ -875,10 +875,13 @@ function stringifyRawOutput(value: unknown): string {
 
   try {
     const result = JSON.stringify(value);
-    return typeof result === 'string' ? result : String(value);
+    if (typeof result === 'string') {
+      return result;
+    }
   } catch {
-    return String(value);
+    // Fall through to the tagged description below.
   }
+  return `[unserializable ${Array.isArray(value) ? 'array' : typeof value}]`;
 }
 
 function buildFileChangeInput(changes: unknown): Record<string, unknown> {

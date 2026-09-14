@@ -75,7 +75,10 @@
   border-end-end-radius: 4px;
 }
 
-.claudian-message-user:has(.claudian-user-msg-actions) {
+/* Modifier toggled by MessageRenderer when an actions toolbar exists.
+   A state class is used instead of a relational selector, which
+   Obsidian's review flags for performance. */
+.claudian-message-user--with-actions {
   margin-bottom: 18px;
 }
 
