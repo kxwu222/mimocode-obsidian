@@ -50,10 +50,10 @@ Chat commands (open chat, inline edit, new tab, new session, close tab) have no 
 ## Models
 
 
-| Model           | Description                                  |
-| --------------- | -------------------------------------------- |
-| `mimo-v2.5`     | Default. Chat plus image input.              |
-| `mimo-v2.5-pro` | Flagship reasoning — text only, no images    |
+| Model             | Description                                        |
+| ----------------- | -------------------------------------------------- |
+| `mimo-v2.6-flash` | Default. Chat plus image, video, and audio input. |
+| `mimo-v2.6-pro`   | Flagship reasoning. Same modalities as Flash.      |
 
 
 

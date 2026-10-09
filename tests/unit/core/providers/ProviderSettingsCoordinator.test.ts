@@ -2,7 +2,7 @@ import '@/providers';
 
 import { ProviderSettingsCoordinator } from '@/core/providers/ProviderSettingsCoordinator';
 import type { Conversation } from '@/core/types';
-const DEFAULT_MIMO_MODEL = 'mimo-v2.5';
+const DEFAULT_MIMO_MODEL = 'mimo-v2.6-flash';
 
 describe('ProviderSettingsCoordinator', () => {
   describe('normalizeProviderSelection', () => {

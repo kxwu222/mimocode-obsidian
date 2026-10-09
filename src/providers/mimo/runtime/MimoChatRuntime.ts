@@ -26,7 +26,13 @@ import { appendCurrentNote } from '../../../utils/context';
 import { getLocalIsoDate, getTodayDate } from '../../../utils/date';
 import { appendEditorContext } from '../../../utils/editor';
 import { MIMO_PROVIDER_CAPABILITIES } from '../capabilities';
-import { getMimoBaseUrl, getMimoProviderSettings, isMimoModel, resolveMimoChatModel } from '../settings';
+import {
+  getMimoBaseUrl,
+  getMimoProviderSettings,
+  isMimoModel,
+  migrateMimoModelId,
+  resolveMimoChatModel,
+} from '../settings';
 import {
   buildMimoMessages,
   mimoCurrentTurnHasImages,
@@ -68,8 +74,8 @@ export function formatMimoWebSearchFallbackNotice(body: string): string {
 
 export function formatMimoHttpError(status: number, body: string): string {
   if (status === 404 && /image input/i.test(body)) {
-    return 'MiMo cannot read this image. Only mimo-v2.5 accepts images — Pro is text-only. '
-      + 'Switch the chat model to MiMo V2.5 and send the image again.';
+    return 'MiMo cannot read this image with the selected model. '
+      + 'Switch to MiMo V2.6 Pro or MiMo V2.6 Flash and send the image again.';
   }
   if (isMimoWebSearchUnavailable(status, body)) {
     return 'MiMo web search is not available on this key. Enable the Web Search Plugin in the MiMo console, '
@@ -194,7 +200,9 @@ export class MimoChatRuntime implements ChatRuntime {
     );
 
     const rawModel = typeof settings.model === 'string' ? settings.model.trim() : '';
-    const selectedModel = rawModel && isMimoModel(rawModel) ? rawModel : mimoSettings.model;
+    const selectedModel = migrateMimoModelId(
+      rawModel && isMimoModel(rawModel) ? rawModel : mimoSettings.model,
+    );
     const model = resolveMimoChatModel(selectedModel, mimoTurnHasImages(preparedTurn, conversationHistory));
     const baseUrl = getMimoBaseUrl(mimoSettings);
 

@@ -7,7 +7,7 @@ export const DEFAULT_CLAUDIAN_SETTINGS: ClaudianSettings = {
 
   permissionMode: 'yolo',
 
-  model: 'mimo-v2.5',
+  model: 'mimo-v2.6-flash',
   thinkingBudget: 'off',
   effortLevel: 'none',
   serviceTier: 'default',

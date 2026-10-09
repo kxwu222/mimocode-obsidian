@@ -53,14 +53,14 @@ function createPlugin(files: Record<string, string>): ClaudianPlugin {
 
   return {
     settings: {
-      model: 'mimo-v2.5',
+      model: 'mimo-v2.6-flash',
       providerConfigs: {
         mimo: {
           enabled: true,
           billingMode: 'payg',
           apiKey: 'sk-test',
           cluster: 'ams',
-          model: 'mimo-v2.5',
+          model: 'mimo-v2.6-flash',
           webSearch: true,
         },
       },
@@ -279,7 +279,7 @@ describe('MimoChatRuntime vault tools', () => {
     ]));
   });
 
-  it('routes image turns to mimo-v2.5 even when Pro is selected', async () => {
+  it('keeps V2.6 Pro when a turn includes images', async () => {
     requestUrlMock.mockResolvedValueOnce({
       status: 200,
       text: sse([
@@ -293,10 +293,10 @@ describe('MimoChatRuntime vault tools', () => {
     });
 
     const plugin = createPlugin({});
-    plugin.settings.model = 'mimo-v2.5-pro';
+    plugin.settings.model = 'mimo-v2.6-pro';
     const mimoConfig = plugin.settings.providerConfigs?.mimo;
     if (mimoConfig) {
-      mimoConfig.model = 'mimo-v2.5-pro';
+      mimoConfig.model = 'mimo-v2.6-pro';
     }
 
     const runtime = new MimoChatRuntime(plugin);
@@ -319,7 +319,7 @@ describe('MimoChatRuntime vault tools', () => {
     }
 
     const body = JSON.parse(requestUrlMock.mock.calls[0][0].body);
-    expect(body.model).toBe('mimo-v2.5');
+    expect(body.model).toBe('mimo-v2.6-pro');
     expect(body.messages[1].content).toEqual([
       { type: 'image_url', image_url: { url: 'data:image/png;base64,iVBORw0KGgo' } },
       { type: 'text', text: 'what is this' },
@@ -363,7 +363,7 @@ describe('MimoChatRuntime vault tools', () => {
     await collect(runtime, 'Find its current price online', history);
 
     const body = JSON.parse(requestUrlMock.mock.calls[0][0].body);
-    expect(body.model).toBe('mimo-v2.5');
+    expect(body.model).toBe('mimo-v2.6-flash');
     expect(body.tools.some((tool: { type: string }) => tool.type === 'web_search')).toBe(true);
     expect(body.messages[1].content[0]).toEqual({
       type: 'image_url',
@@ -622,7 +622,7 @@ describe('MimoChatRuntime vault tools', () => {
 describe('formatMimoHttpError', () => {
   it('explains the image-input 404 instead of dumping the gateway JSON', () => {
     expect(formatMimoHttpError(404, '{"error":{"message":"No endpoints found that support image input"}}'))
-      .toContain('Only mimo-v2.5 accepts images');
+      .toContain('cannot read this image with the selected model');
   });
 
   it('explains a missing Web Search Plugin instead of dumping the gateway JSON', () => {

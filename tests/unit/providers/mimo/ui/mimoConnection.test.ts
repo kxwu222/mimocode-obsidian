@@ -24,7 +24,7 @@ describe('probeMimoConnection', () => {
     apiKey: 'tp-test',
     billingMode: 'token-plan' as const,
     cluster: 'ams' as const,
-    model: 'mimo-v2.5',
+    model: 'mimo-v2.6-flash',
   };
 
   it('fails fast on an empty or mismatched key without calling the network', async () => {

@@ -1,8 +1,20 @@
 import type { ProviderSettingsReconciler } from '../../../core/providers/types';
 import type { Conversation } from '../../../core/types';
+import { migrateMimoModelId } from '../settings';
 
-// Mimo uses API-key auth with no env-var-driven model discovery,
-// so reconciliation is a no-op.
+function migrateStoredModel(holder: Record<string, unknown>, key: string): boolean {
+  const current = holder[key];
+  if (typeof current !== 'string') {
+    return false;
+  }
+  const next = migrateMimoModelId(current);
+  if (next === current) {
+    return false;
+  }
+  holder[key] = next;
+  return true;
+}
+
 export const mimoSettingsReconciler: ProviderSettingsReconciler = {
   reconcileModelWithEnvironment(
     _settings: Record<string, unknown>,
@@ -11,7 +23,23 @@ export const mimoSettingsReconciler: ProviderSettingsReconciler = {
     return { changed: false, invalidatedConversations: [] };
   },
 
-  normalizeModelVariantSettings(_settings: Record<string, unknown>): boolean {
-    return false;
+  normalizeModelVariantSettings(settings: Record<string, unknown>): boolean {
+    let changed = migrateStoredModel(settings, 'model');
+    changed = migrateStoredModel(settings, 'titleGenerationModel') || changed;
+
+    const savedProviderModel = settings.savedProviderModel;
+    if (savedProviderModel && typeof savedProviderModel === 'object' && !Array.isArray(savedProviderModel)) {
+      changed = migrateStoredModel(savedProviderModel as Record<string, unknown>, 'mimo') || changed;
+    }
+
+    const providerConfigs = settings.providerConfigs;
+    if (providerConfigs && typeof providerConfigs === 'object' && !Array.isArray(providerConfigs)) {
+      const mimo = (providerConfigs as Record<string, unknown>).mimo;
+      if (mimo && typeof mimo === 'object' && !Array.isArray(mimo)) {
+        changed = migrateStoredModel(mimo as Record<string, unknown>, 'model') || changed;
+      }
+    }
+
+    return changed;
   },
 };
